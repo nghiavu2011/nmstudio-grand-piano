@@ -1,0 +1,3 @@
+No third-party MIDI arrangements are bundled in this open-source edition.
+The original Atelier Prelude is generated in lib/piano-score.ts.
+Imported MIDI files stay in the visitor's browser.

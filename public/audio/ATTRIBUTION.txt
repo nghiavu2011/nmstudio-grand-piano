@@ -1,0 +1,10 @@
+Salamander Grand Piano V3
+Author: Alexander Holm
+License: Creative Commons Attribution 3.0 Unported
+https://creativecommons.org/licenses/by/3.0/
+Original library: https://sfzinstruments.github.io/pianos/salamander/
+MP3 distribution: https://tonejs.github.io/audio/salamander/
+
+This application self-hosts 30 MP3 recordings distributed by Tone.js.
+Real-time playback applies pitch shifting, gain, filtering and convolution reverb.
+The original author does not endorse this application.
