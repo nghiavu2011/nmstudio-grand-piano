@@ -18,6 +18,11 @@ import {
   setupDynamicProcessing,
   AUDIO_V2_GAIN_CONFIG,
 } from './audio/gain-staging';
+import {
+  calculateReleaseDuration,
+  applyDamperTouchEnvelope,
+} from './audio/release';
+import { SympatheticResonanceBus } from './audio/resonance';
 
 export type AudioStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type AudioEngineVersion = 'v1' | 'v2';
@@ -62,11 +67,13 @@ export class GrandAudio implements PianoAudio {
   private wet: GainNode | null = null;
   private convolver: ConvolverNode | null = null;
   private input: GainNode | null = null;
+  private resonanceBus: SympatheticResonanceBus | null = null;
   private dynamicsCompressor: DynamicsCompressorNode | null = null;
   private safetyLimiter: DynamicsCompressorNode | null = null;
   private volume = 0.65;
   private reverb = 0.28;
   private environment = 0;
+  private isSustained = false;
   private disposed = false;
   private abort = new AbortController();
 
@@ -215,6 +222,11 @@ export class GrandAudio implements PianoAudio {
     this.convolver.connect(this.wet);
     this.wet.connect(this.master);
 
+    // Milestone 2: Sympathetic Resonance Engine
+    this.resonanceBus = new SympatheticResonanceBus(c);
+    this.resonanceBus.connectSource(this.input);
+    this.resonanceBus.connectDestination(this.dry);
+
     this.rebuildDynamicGraph();
     this.setVolume(this.volume);
     this.setReverb(this.reverb);
@@ -308,6 +320,17 @@ export class GrandAudio implements PianoAudio {
       }
     }
     this.convolver.buffer = ir;
+  }
+
+  /**
+   * Modulates pedal mechanics (Soft, Sostenuto, Sustain) in real time.
+   */
+  setPedal(index: number, down: boolean) {
+    if (index === 2) {
+      // Sustain pedal (CC64) lifts all dampers
+      this.isSustained = down;
+      this.resonanceBus?.setSustain(down, this.context?.currentTime);
+    }
   }
 
   attack(midi: number, velocity: number, soft: boolean) {
@@ -404,7 +427,7 @@ export class GrandAudio implements PianoAudio {
         source.stop(releaseAt + tail + 0.02);
       }
     } else {
-      // ===== V2 AUDIO ENGINE (Milestone 1 Core) =====
+      // ===== V2 AUDIO ENGINE (Milestone 1 & 2) =====
       const targetLayer = velocityToLayer(velocity);
       const availableMidis = new Set(this.buffers.keys());
       const { entry, layer, pitchShiftSemitones } = selectClosestSample(
@@ -456,8 +479,11 @@ export class GrandAudio implements PianoAudio {
       voice.startAt = at;
       voice.releaseAt = releaseAt;
 
+      // Update soundboard sympathetic resonance polyphony
+      this.resonanceBus?.setPolyphony(this.voices.size);
+
       if (releaseAt !== undefined) {
-        const tail = midi >= 89 ? 1.2 : 0.13 + Math.max(0, 60 - midi) * 0.002;
+        const tail = calculateReleaseDuration(midi, false);
         gain.gain.setValueAtTime(gain.gain.value, releaseAt);
         gain.gain.exponentialRampToValueAtTime(0.0001, releaseAt + tail);
       }
@@ -468,7 +494,7 @@ export class GrandAudio implements PianoAudio {
 
       source.start(at, sampleOffset * rate);
       if (releaseAt !== undefined) {
-        const tail = midi >= 89 ? 1.2 : 0.13 + Math.max(0, 60 - midi) * 0.002;
+        const tail = calculateReleaseDuration(midi, false);
         source.stop(releaseAt + tail + 0.02);
       }
     }
@@ -480,6 +506,7 @@ export class GrandAudio implements PianoAudio {
     voice.gain?.disconnect();
     voice.filter?.disconnect();
     voice.pan?.disconnect();
+    this.resonanceBus?.setPolyphony(this.voices.size);
     if (
       !voice.score &&
       ![...this.voices.values()].some((v) => v.midi === midi && !v.released)
@@ -531,10 +558,8 @@ export class GrandAudio implements PianoAudio {
   release(midi: number) {
     for (const v of this.voices.values()) {
       if (!v.score && v.midi === midi) {
-        this.stopVoice(
-          v,
-          midi >= 89 ? 1.2 : 0.14 + Math.max(0, 60 - midi) * 0.0025,
-        );
+        const duration = calculateReleaseDuration(midi, false);
+        this.stopVoice(v, duration);
       }
     }
   }
@@ -547,9 +572,7 @@ export class GrandAudio implements PianoAudio {
       return;
     }
     const t = this.context.currentTime;
-    voice.gain.gain.cancelScheduledValues(t);
-    voice.gain.gain.setValueAtTime(voice.gain.gain.value, t);
-    voice.gain.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+    applyDamperTouchEnvelope(voice.gain, t, seconds);
     voice.source.stop(t + seconds + 0.02);
   }
 
@@ -583,6 +606,7 @@ export class GrandAudio implements PianoAudio {
     this.disposed = true;
     this.abort.abort();
     this.silence();
+    this.resonanceBus?.disconnect();
     void this.context?.close();
     this.raw.clear();
     this.buffers.clear();

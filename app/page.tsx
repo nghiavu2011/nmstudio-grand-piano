@@ -280,6 +280,9 @@ export default function Home() {
         lastNote: manual.held.length ? manual.lastNote : demo.lastNote,
       };
       setSnapshot(s);
+      s.pedals.forEach((down, i) => {
+        sound.setPedal(i, down);
+      });
       if (world.current) {
         world.current.held = new Set(s.held);
         world.current.sounding = new Set(s.sounding);
