@@ -60,6 +60,7 @@ import {
   type PianoScore,
 } from '@/lib/piano-score';
 import { PianoTransport } from '@/lib/piano-transport';
+import { LiveNoteController } from '@/lib/live-note-controller';
 
 const EMPTY: PianoSnapshot = {
   held: [],
@@ -185,6 +186,7 @@ export default function Home() {
   const meter = useRef<HTMLCanvasElement>(null);
   const activePointers = useRef(new Map<number, number>());
   const keysDown = useRef(new Map<string, number>());
+  const uiLiveController = useRef<LiveNoteController | null>(null);
   const config = useRef({
     scene: 0,
     view: 'overview' as View,
@@ -209,6 +211,7 @@ export default function Home() {
   };
   const changeOctave = (n: number) => {
     const o = Math.max(1, Math.min(6, n));
+    uiLiveController.current?.releaseAll();
     player.current?.releaseSource('key:');
     player.current?.releaseSource('ui:');
     keysDown.current.clear();
@@ -219,6 +222,7 @@ export default function Home() {
   const allOff = () => {
     recordingTask.current?.cancel();
     stopDemo();
+    uiLiveController.current?.releaseAll();
     player.current?.allOff();
     world.current?.releasePointers();
     activePointers.current.clear();
@@ -265,6 +269,10 @@ export default function Home() {
       },
       release: m => sound.release(m),
       silence: () => sound.silenceManual(),
+    });
+    uiLiveController.current = new LiveNoteController({
+      noteOn: (m, s, v) => state.noteOn(m, s, v),
+      noteOff: (m, s) => state.noteOff(m, s),
     });
     const demoState = new PianoState({ attack() {}, release() {}, silence() {} });
     player.current = state;
@@ -394,6 +402,7 @@ export default function Home() {
     };
     const blur = () => {
       // Only release physical input; the independent score clock keeps running.
+      uiLiveController.current?.releaseAll();
       state.allOff();
       world.current?.releasePointers();
       activePointers.current.clear();
@@ -433,6 +442,7 @@ export default function Home() {
       recordingTask.current?.cancel();
       transport.current?.stop();
       if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
+      uiLiveController.current?.releaseAll();
       sound.dispose();
       world.current?.dispose();
       window.removeEventListener('keydown', down);
@@ -655,42 +665,42 @@ export default function Home() {
     down: boolean,
   ) => {
     const id = event.pointerId;
-    const source = `ui:${id}`;
     if (!down) {
-      const old = activePointers.current.get(id);
-      if (old !== undefined) player.current?.noteOff(old, source);
-      activePointers.current.delete(id);
+      uiLiveController.current?.pointerUp(id);
       return;
     }
     if (recordingTask.current) return;
     event.preventDefault();
-    event.currentTarget.setPointerCapture(id);
+    try {
+      event.currentTarget.setPointerCapture(id);
+    } catch {
+      // Ignore pointer capture exceptions in sandbox environments
+    }
     const target = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-midi]',
     );
     if (target) {
       const midi = Number(target.dataset.midi);
-      activePointers.current.set(id, midi);
-      player.current?.noteOn(midi, source, velocityRef.current);
+      uiLiveController.current?.pointerDown(
+        id,
+        midi,
+        'ui',
+        event.pointerType === 'pen' ? event.pressure : undefined,
+      );
     }
   };
   const slideNote = (event: ReactPointerEvent<HTMLElement>) => {
-    const old = activePointers.current.get(event.pointerId);
-    if (old === undefined) return;
+    if (!uiLiveController.current?.hasPointer(event.pointerId)) return;
     const target = document
       .elementFromPoint(event.clientX, event.clientY)
       ?.closest<HTMLElement>('[data-midi]');
-    const midi = target ? Number(target.dataset.midi) : -1;
-    if (midi !== old) {
-      if (old >= 21) player.current?.noteOff(old, `ui:${event.pointerId}`);
-      activePointers.current.set(event.pointerId, midi);
-      if (midi >= 21)
-        player.current?.noteOn(
-          midi,
-          `ui:${event.pointerId}`,
-          velocityRef.current,
-        );
-    }
+    const midi = target ? Number(target.dataset.midi) : null;
+    uiLiveController.current.pointerMove(
+      event.pointerId,
+      midi,
+      'ui',
+      event.pointerType === 'pen' ? event.pressure : undefined,
+    );
   };
   const screenKeys = [];
   let white = 0;

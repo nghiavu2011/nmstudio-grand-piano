@@ -26,6 +26,56 @@ import { SympatheticResonanceBus } from './audio/resonance';
 
 export type AudioStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type AudioEngineVersion = 'v1' | 'v2';
+export type PlaybackProfile = 'live' | 'demo';
+
+/**
+ * Trims leading encoder silence from decoded AudioBuffers while preserving
+ * a micro pre-roll (~1.5ms) with a smooth ramp to guarantee immediate attack and zero clicks.
+ */
+export function trimLeadingSilence(
+  buffer: AudioBuffer,
+  context: BaseAudioContext,
+  threshold = 0.0015,
+  preRollMs = 1.5,
+): AudioBuffer {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const length = buffer.length;
+  const preRollSamples = Math.floor((preRollMs / 1000) * sampleRate);
+
+  // Find first sample exceeding threshold across all channels
+  let firstActiveSample = length;
+  for (let ch = 0; ch < numChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      if (Math.abs(data[i]) >= threshold) {
+        if (i < firstActiveSample) firstActiveSample = i;
+        break;
+      }
+    }
+  }
+
+  // If no silent padding or buffer is entirely silent, keep original
+  const trimStart = Math.max(0, firstActiveSample - preRollSamples);
+  if (trimStart <= 0 || trimStart >= length) return buffer;
+
+  const newLength = length - trimStart;
+  const trimmed = context.createBuffer(numChannels, newLength, sampleRate);
+
+  for (let ch = 0; ch < numChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dest = trimmed.getChannelData(ch);
+    dest.set(src.subarray(trimStart));
+
+    // Smooth micro fade-in ramp over the pre-roll (32-64 samples) to prevent DC clicks
+    const rampLength = Math.min(64, Math.floor(preRollSamples));
+    for (let i = 0; i < rampLength; i++) {
+      dest[i] *= i / rampLength;
+    }
+  }
+
+  return trimmed;
+}
 
 // Legacy V1 anchor definitions for A/B comparison fallback
 const LEGACY_V1_SAMPLES = DEFAULT_ANCHORS.map((s) => ({
@@ -56,6 +106,9 @@ export class GrandAudio implements PianoAudio {
 
   // Active audio engine version (default: v2)
   version: AudioEngineVersion = 'v2';
+
+  // Active playback profile: 'live' (instant touch & glissando attack) | 'demo' (rich score acoustic simulation)
+  profile: PlaybackProfile = 'live';
 
   private buffers = new Map<number, AudioBuffer>();
   private raw = new Map<number, ArrayBuffer>();
@@ -114,6 +167,14 @@ export class GrandAudio implements PianoAudio {
       }
     }
     this.version = 'v2';
+  }
+
+  /**
+   * Switches playback profile between 'live' (immediate touch attack & glissando) and 'demo' (score playback).
+   */
+  setProfile(profile: PlaybackProfile) {
+    if (this.profile === profile) return;
+    this.profile = profile;
   }
 
   /**
@@ -185,8 +246,11 @@ export class GrandAudio implements PianoAudio {
             await this.fetchSample(s.midi, s.note);
             const rawBytes = this.raw.get(s.midi);
             if (!rawBytes) return;
-            const b = await context.decodeAudioData(rawBytes.slice(0));
-            if (!this.disposed) this.buffers.set(s.midi, b);
+            const rawBuffer = await context.decodeAudioData(rawBytes.slice(0));
+            if (!this.disposed) {
+              const trimmed = trimLeadingSilence(rawBuffer, context, 0.0015, 1.5);
+              this.buffers.set(s.midi, trimmed);
+            }
           }),
         );
         if (this.disposed) return;
@@ -458,12 +522,18 @@ export class GrandAudio implements PianoAudio {
       const gain = c.createGain();
       gain.gain.value = voiceGain;
 
-      // Dynamic acoustic harmonic filtering
+      // Dynamic acoustic harmonic filtering: LIVE profile preserves full transient brightness, DEMO profile models warm room dynamics
       const filter = c.createBiquadFilter();
       filter.type = 'lowpass';
-      const filterSettings = velocityToAcousticFilter(velocity, soft, midi);
-      filter.frequency.value = filterSettings.frequency;
-      filter.Q.value = filterSettings.Q;
+      if (this.profile === 'live') {
+        // Instant attack: keep wide-open bandwidth so hammer transient is crisp and direct
+        filter.frequency.value = soft ? 12000 : 20000;
+        filter.Q.value = 0.25;
+      } else {
+        const filterSettings = velocityToAcousticFilter(velocity, soft, midi);
+        filter.frequency.value = filterSettings.frequency;
+        filter.Q.value = filterSettings.Q;
+      }
 
       // Natural acoustic stereo spread (soundboard bass on left, treble on right)
       const pan = c.createStereoPanner();
@@ -590,6 +660,7 @@ export class GrandAudio implements PianoAudio {
     return {
       status: this.status,
       version: this.version,
+      profile: this.profile,
       context: this.context?.state ?? 'none',
       samples: this.buffers.size,
       voices: [...this.voices.values()].filter(

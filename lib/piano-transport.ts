@@ -25,6 +25,7 @@ export class PianoTransport {
     startPosition = 0,
   ) {
     this.stop();
+    this.audio.setProfile?.('demo');
     this.state.allOff();
     this.state.visualOnly = true;
     const offset = Math.max(0, Math.min(score.duration, startPosition));
@@ -96,6 +97,7 @@ export class PianoTransport {
     this.backgroundSchedule = null;
     cancelAnimationFrame(this.frame);
     if (cancelAudio) this.audio.cancelScore();
+    this.audio.setProfile?.('live');
     this.state.releaseSource('demo:');
     this.state.visualOnly = false;
   }

@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PianoModel, box, rod } from './piano-model';
 import { PianoSheet } from './piano-sheet';
+import { LiveNoteController } from './live-note-controller';
 
 export type View = 'overview' | 'perform' | 'mechanism';
 const V = (x: number, y: number, z: number) => new T.Vector3(x, y, z);
@@ -39,10 +40,14 @@ export class PianoWorld {
   private targetLook: T.Vector3 | null = null;
   private ray = new T.Raycaster();
   private pointer = new T.Vector2();
-  private pointers = new Map<number, number>();
+  private liveController: LiveNoteController;
   private cleaned = false;
   private wasMobile: boolean | null = null;
   constructor(private host: HTMLElement) {
+    this.liveController = new LiveNoteController({
+      noteOn: (m, s, v) => this.onNoteOn?.(m, s, v),
+      noteOff: (m, s) => this.onNoteOff?.(m, s),
+    });
     this.renderer = new T.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
@@ -467,12 +472,12 @@ export class PianoWorld {
     const midi = this.pick(e);
     if (midi !== null) {
       this.controls.enabled = false;
-      this.pointers.set(e.pointerId, midi);
       this.renderer.domElement.setPointerCapture(e.pointerId);
-      this.onNoteOn?.(
+      this.liveController.pointerDown(
+        e.pointerId,
         midi,
-        `3d:${e.pointerId}`,
-        e.pointerType === 'pen' ? Math.max(0.2, e.pressure) : 0.78,
+        '3d',
+        e.pointerType === 'pen' ? e.pressure : undefined,
       );
       e.stopImmediatePropagation();
       e.preventDefault();
@@ -482,24 +487,24 @@ export class PianoWorld {
     const midi = this.pick(e);
     this.renderer.domElement.style.cursor = midi !== null ? 'pointer' : 'grab';
     this.onHover?.(midi, e.clientX, e.clientY);
-    const old = this.pointers.get(e.pointerId);
-    if (old !== undefined && midi !== old) {
-      if (old >= 21) this.onNoteOff?.(old, `3d:${e.pointerId}`);
-      if (midi !== null) {
-        this.pointers.set(e.pointerId, midi);
-        this.onNoteOn?.(midi, `3d:${e.pointerId}`, 0.72);
-      } else this.pointers.set(e.pointerId, -1);
+    if (this.liveController.hasPointer(e.pointerId)) {
+      this.liveController.pointerMove(
+        e.pointerId,
+        midi,
+        '3d',
+        e.pointerType === 'pen' ? e.pressure : undefined,
+      );
     }
   };
   private up = (e: PointerEvent) => {
-    const midi = this.pointers.get(e.pointerId);
-    if (midi !== undefined) {
-      if (midi >= 21) this.onNoteOff?.(midi, `3d:${e.pointerId}`);
-      this.pointers.delete(e.pointerId);
+    if (this.liveController.hasPointer(e.pointerId)) {
+      this.liveController.pointerUp(e.pointerId);
     }
-    if (!this.pointers.size) this.controls.enabled = true;
+    this.controls.enabled = true;
   };
-  private leave = () => this.onHover?.(null, 0, 0);
+  private leave = () => {
+    this.onHover?.(null, 0, 0);
+  };
   private preventContext = (e: Event) => e.preventDefault();
   private animate = (ms: number) => {
     if (this.cleaned) return;
@@ -529,11 +534,11 @@ export class PianoWorld {
     this.animation = requestAnimationFrame(this.animate);
   };
   releasePointers() {
-    for (const [id, midi] of this.pointers) this.onNoteOff?.(midi, `3d:${id}`);
-    this.pointers.clear();
+    this.liveController.releaseAll();
     this.controls.enabled = true;
   }
   dispose() {
+    this.liveController.releaseAll();
     this.sheet.dispose();
     this.cleaned = true;
     cancelAnimationFrame(this.animation);
