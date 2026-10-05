@@ -1,14 +1,14 @@
 /**
- * N&Mstudio Grand Piano — Professional Repertoire Registry V2
- * Comprehensive musical metadata, rights management, and performance paths.
+ * N&Mstudio Grand Piano — Professional Repertoire Registry V3
+ * Curated user collection: 14 legendary global & Vietnamese pieces, plus Atelier Prelude.
  */
 
 export type RepertoireCategory =
   | 'N&M ORIGINAL'
-  | 'CLASSICAL'
-  | 'MODERN PIANO'
+  | 'VIETNAMESE'
+  | 'INTERNATIONAL POP'
   | 'CINEMATIC'
-  | 'VIETNAMESE';
+  | 'ASIAN POP';
 
 export type RightsStatus =
   | 'public-domain'
@@ -33,7 +33,7 @@ export type RepertoireItem = {
 };
 
 export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
-  // 1. N&Mstudio Originals
+  // 0. N&Mstudio Original Intro
   {
     id: 'prelude',
     title: 'Atelier Prelude',
@@ -50,193 +50,211 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     hasPerformance: true,
   },
 
-  // 2. Classical Repertoire (Full Length Concert Benchmarks)
+  // 1. 50 NĂM VỀ SAU
   {
-    id: 'canon',
-    title: 'Canon in D',
-    composer: 'Johann Pachelbel',
-    country: 'Germany',
-    category: 'CLASSICAL',
-    year: 1680,
-    duration: '03:28',
+    id: '50-nam-ve-sau',
+    title: '50 Năm Về Sau',
+    composer: 'Nhạc Trữ Tình Việt Nam',
+    country: 'Vietnam',
+    category: 'VIETNAMESE',
+    year: 2023,
+    duration: '03:15',
     difficulty: 'Intermediate',
-    style: 'Baroque / Polyphonic Concert Solo',
-    source: 'N&Mstudio Two-Hand Concert Solo arrangement',
-    rightsStatus: 'public-domain',
-    file: 'canon-in-d.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'elise',
-    title: 'Für Elise (WoO 59)',
-    composer: 'Ludwig van Beethoven',
-    country: 'Germany',
-    category: 'CLASSICAL',
-    year: 1810,
-    duration: '01:45',
-    difficulty: 'Intermediate',
-    style: 'Romantic / Classical Bagatelle',
-    source: 'N&Mstudio Two-Hand Classical Solo arrangement',
-    rightsStatus: 'public-domain',
-    file: 'fur-elise.mid',
+    style: 'Ballad / Emotive Grand Piano',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: '50-nam-ve-sau.mid',
     hasPerformance: true,
   },
 
-  // 3. Vietnamese Virtuosic & Lyrical Piano Collection
+  // 2. Bài Thánh Ca Buồn
   {
-    id: 'co-chang-trai',
-    title: 'Có Chàng Trai Viết Lên Cây',
-    composer: 'Phan Mạnh Quỳnh (OST Mắt Biếc)',
+    id: 'bai-thanh-ca-buon',
+    title: 'Bài Thánh Ca Buồn',
+    composer: 'Nguyễn Vũ',
     country: 'Vietnam',
     category: 'VIETNAMESE',
-    year: 2019,
+    year: 1972,
+    duration: '03:32',
+    difficulty: 'Intermediate',
+    style: 'Trữ Tình Sâu Lắng / Slow Expressive',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'bai-thanh-ca-buon.mid',
+    hasPerformance: true,
+  },
+
+  // 3. Vết Mưa
+  {
+    id: 'vet-mua',
+    title: 'Vết Mưa',
+    composer: 'Vũ Cát Tường',
+    country: 'Vietnam',
+    category: 'VIETNAMESE',
+    year: 2013,
+    duration: '02:40',
+    difficulty: 'Intermediate',
+    style: 'Contemporary Ballad / Lyrical Flow',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'vet-mua.mid',
+    hasPerformance: true,
+  },
+
+  // 4. Close To You
+  {
+    id: 'close-to-you',
+    title: '(They Long to Be) Close to You',
+    composer: 'Burt Bacharach & The Carpenters',
+    country: 'USA',
+    category: 'INTERNATIONAL POP',
+    year: 1970,
+    duration: '02:50',
+    difficulty: 'Intermediate',
+    style: 'Romantic Pop / Warm Arpeggio',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'close-to-you.mid',
+    hasPerformance: true,
+  },
+
+  // 5. Golden Hour
+  {
+    id: 'golden-hour',
+    title: 'Golden Hour',
+    composer: 'JVKE',
+    country: 'USA',
+    category: 'INTERNATIONAL POP',
+    year: 2022,
     duration: '02:45',
-    difficulty: 'Intermediate',
-    style: 'Trữ Tình Hiện Đại / Lyrical Ballad',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'licensed',
-    file: 'co-chang-trai-viet-len-cay.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'nham-mat',
-    title: 'Nhắm Mắt Thấy Mùa Hè',
-    composer: 'Hồ Tiến Đạt (OST Nhắm Mắt Thấy Mùa Hè)',
-    country: 'Vietnam',
-    category: 'VIETNAMESE',
-    year: 2018,
-    duration: '02:42',
-    difficulty: 'Intermediate',
-    style: 'Cinematic Ballad / Impressionist Flow',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'licensed',
-    file: 'nham-mat-thay-mua-he.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'hanh-phuc-moi',
-    title: 'Hạnh Phúc Mới',
-    composer: 'Sơn Tùng M-TP & Hari Won (OST Chàng Trai Năm Ấy)',
-    country: 'Vietnam',
-    category: 'VIETNAMESE',
-    year: 2014,
-    duration: '02:38',
-    difficulty: 'Intermediate',
-    style: 'Romantic Ballad / Emotive Grand Piano',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'licensed',
-    file: 'hanh-phuc-moi.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'phep-mau',
-    title: 'Phép Màu',
-    composer: 'Tác Phẩm Piano Điêu Luyện',
-    country: 'Vietnam',
-    category: 'VIETNAMESE',
-    year: 2021,
-    duration: '02:29',
     difficulty: 'Advanced',
-    style: 'Virtuoso Solo / Dramatic Arpeggios',
+    style: 'Shimmering Arpeggios / Virtuosic Cascade',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
-    file: 'phep-mau.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'beo-dat',
-    title: 'Bèo Dạt Mây Trôi',
-    composer: 'Dân Ca Quan Họ Bắc Ninh',
-    country: 'Vietnam',
-    category: 'VIETNAMESE',
-    year: 'Truyền thống',
-    duration: '01:54',
-    difficulty: 'Intermediate',
-    style: 'Concert Rhapsody / Pentatonic Solo',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'public-domain',
-    file: 'beo-dat-may-troi.mid',
+    file: 'golden-hour.mid',
     hasPerformance: true,
   },
 
-  // 4. Modern & Contemporary Piano
+  // 6. I'll Never Love Again
   {
-    id: 'river-flows',
-    title: 'River Flows in You',
-    composer: 'Yiruma',
-    country: 'South Korea',
-    category: 'MODERN PIANO',
-    year: 2001,
-    duration: '02:56',
+    id: 'ill-never-love-again',
+    title: "I'll Never Love Again",
+    composer: 'Lady Gaga (A Star Is Born)',
+    country: 'USA',
+    category: 'INTERNATIONAL POP',
+    year: 2018,
+    duration: '03:10',
     difficulty: 'Intermediate',
-    style: 'Contemporary / New Age Lyrical',
+    style: 'Cinematic Power Ballad / Dynamic Crescendo',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
-    file: 'river-flows-in-you.mid',
+    file: 'ill-never-love-again.mid',
     hasPerformance: true,
   },
+
+  // 7. Imagine
   {
-    id: 'kiss-the-rain',
-    title: 'Kiss the Rain',
-    composer: 'Yiruma',
-    country: 'South Korea',
-    category: 'MODERN PIANO',
+    id: 'imagine',
+    title: 'Imagine',
+    composer: 'John Lennon',
+    country: 'UK',
+    category: 'INTERNATIONAL POP',
+    year: 1971,
+    duration: '03:05',
+    difficulty: 'Easy',
+    style: 'Iconic Grand Piano Motif / Timeless Classic',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'imagine.mid',
+    hasPerformance: true,
+  },
+
+  // 8. Last Christmas
+  {
+    id: 'last-christmas',
+    title: 'Last Christmas',
+    composer: 'George Michael (Wham!)',
+    country: 'UK',
+    category: 'INTERNATIONAL POP',
+    year: 1984,
+    duration: '03:20',
+    difficulty: 'Intermediate',
+    style: 'Holiday Pop / Bright Melodic Flow',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'last-christmas.mid',
+    hasPerformance: true,
+  },
+
+  // 9. Proud of You (I Can Fly)
+  {
+    id: 'proud-of-you',
+    title: 'Proud of You (I Can Fly)',
+    composer: 'Fiona Fung / Chan Kwong-wing',
+    country: 'Hong Kong',
+    category: 'INTERNATIONAL POP',
     year: 2003,
-    duration: '03:08',
-    difficulty: 'Intermediate',
-    style: 'Emotional / Arpeggiated Ballad',
+    duration: '02:35',
+    difficulty: 'Easy',
+    style: 'Uplifting Acoustic Melody / Pure Lyrical',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
-    file: 'kiss-the-rain.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'nuvole-bianche',
-    title: 'Nuvole Bianche',
-    composer: 'Ludovico Einaudi',
-    country: 'Italy',
-    category: 'MODERN PIANO',
-    year: 2004,
-    duration: '03:04',
-    difficulty: 'Intermediate',
-    style: 'Minimalist / Emotional Crescendo',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'licensed',
-    file: 'nuvole-bianche.mid',
-    hasPerformance: true,
-  },
-  {
-    id: 'mariage-damour',
-    title: "Mariage d'Amour",
-    composer: 'Paul de Senneville',
-    country: 'France',
-    category: 'MODERN PIANO',
-    year: 1979,
-    duration: '02:30',
-    difficulty: 'Intermediate',
-    style: 'Romantic Concert Pop',
-    source: 'N&Mstudio Concert Solo arrangement',
-    rightsStatus: 'licensed',
-    file: 'mariage-damour.mid',
+    file: 'proud-of-you.mid',
     hasPerformance: true,
   },
 
-  // 5. Cinematic Piano
+  // 10. Haru Haru
   {
-    id: 'time',
-    title: 'Time (Inception)',
-    composer: 'Hans Zimmer',
-    country: 'USA / Germany',
-    category: 'CINEMATIC',
-    year: 2010,
-    duration: '03:24',
+    id: 'haru-haru',
+    title: 'Haru Haru (하루하루)',
+    composer: 'G-Dragon (BIGBANG)',
+    country: 'South Korea',
+    category: 'ASIAN POP',
+    year: 2008,
+    duration: '03:12',
     difficulty: 'Intermediate',
-    style: 'Cinematic / Grand Orchestral Build',
+    style: 'Dramatic K-Pop Piano / Emotional Minor Flow',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
-    file: 'time-inception.mid',
+    file: 'haru-haru.mid',
     hasPerformance: true,
   },
+
+  // 11. Sứ Thanh Hoa (青花瓷)
+  {
+    id: 'su-thanh-hoa',
+    title: 'Sứ Thanh Hoa (青花瓷)',
+    composer: 'Châu Kiệt Luân (Jay Chou)',
+    country: 'Taiwan',
+    category: 'ASIAN POP',
+    year: 2007,
+    duration: '02:55',
+    difficulty: 'Intermediate',
+    style: 'Pentatonic Chinese Wind / Poetic Piano',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'su-thanh-hoa.mid',
+    hasPerformance: true,
+  },
+
+  // 12. 蒲公英的约定 (Dandelion's Promise)
+  {
+    id: 'dandelions-promise',
+    title: '蒲公英的约定 (Hẹn Ước Bồ Công Anh)',
+    composer: 'Châu Kiệt Luân (Jay Chou)',
+    country: 'Taiwan',
+    category: 'ASIAN POP',
+    year: 2007,
+    duration: '03:00',
+    difficulty: 'Intermediate',
+    style: 'Nostalgic Youth Ballad / Gentle Resonance',
+    source: 'N&Mstudio Concert Solo arrangement',
+    rightsStatus: 'licensed',
+    file: 'dandelions-promise.mid',
+    hasPerformance: true,
+  },
+
+  // 13. Interstellar
   {
     id: 'interstellar',
     title: 'Interstellar (Main Theme)',
@@ -252,6 +270,8 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     file: 'interstellar.mid',
     hasPerformance: true,
   },
+
+  // 14. Merry-Go-Round of Life
   {
     id: 'merry-go-round',
     title: "Merry-Go-Round of Life (Howl's Moving Castle)",

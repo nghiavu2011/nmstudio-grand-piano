@@ -204,12 +204,21 @@ export const VIETNAMESE: Record<string, string> = {
   'Start playing': 'Bắt đầu chơi',
 
   // Pieces
-  'Canon in D · Pachelbel': 'Canon in D · J. Pachelbel',
-  'Für Elise · Beethoven': 'Für Elise · L. v. Beethoven',
-  'River Flows in You · Yiruma': 'River Flows in You · Yiruma',
-  'Bèo Dạt Mây Trôi · Dân ca VN': 'Bèo Dạt Mây Trôi · Dân ca Bắc Bộ',
-  'Diễm Xưa · Trịnh Công Sơn': 'Diễm Xưa · Trịnh Công Sơn',
-  'Mẹ Yêu Con · Nguyễn Văn Tý': 'Mẹ Yêu Con · Nguyễn Văn Tý',
+  'Atelier Prelude': 'Atelier Prelude · Anionex',
+  '50 Năm Về Sau': '50 Năm Về Sau · Nhạc Trữ Tình',
+  'Bài Thánh Ca Buồn': 'Bài Thánh Ca Buồn · Nguyễn Vũ',
+  'Vết Mưa': 'Vết Mưa · Vũ Cát Tường',
+  '(They Long to Be) Close to You': 'Close to You · The Carpenters',
+  'Golden Hour': 'Golden Hour · JVKE',
+  "I'll Never Love Again": "I'll Never Love Again · Lady Gaga",
+  'Imagine': 'Imagine · John Lennon',
+  'Last Christmas': 'Last Christmas · Wham!',
+  'Proud of You (I Can Fly)': 'Proud of You (I Can Fly) · Fiona Fung',
+  'Haru Haru (하루하루)': 'Haru Haru · BIGBANG',
+  'Sứ Thanh Hoa (青花瓷)': 'Sứ Thanh Hoa (青花瓷) · Châu Kiệt Luân',
+  '蒲公英的约定 (Hẹn Ước Bồ Công Anh)': 'Hẹn Ước Bồ Công Anh · Châu Kiệt Luân',
+  'Interstellar (Main Theme)': 'Interstellar (Main Theme) · Hans Zimmer',
+  "Merry-Go-Round of Life (Howl's Moving Castle)": "Merry-Go-Round of Life · Joe Hisaishi",
 
   // Atmosphere & Finish
   'CHOOSE YOUR ATMOSPHERE': 'CHỌN KHÔNG GIAN ÂM NHẠC',

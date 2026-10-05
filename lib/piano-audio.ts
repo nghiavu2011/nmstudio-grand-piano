@@ -23,6 +23,10 @@ import {
   applyDamperTouchEnvelope,
 } from './audio/release';
 import { SympatheticResonanceBus } from './audio/resonance';
+import {
+  MechanicalActionEngine,
+  calculateDynamicTimbreExcitation,
+} from './audio/physical-modeling';
 
 export type AudioStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type AudioEngineVersion = 'v1' | 'v2';
@@ -121,6 +125,7 @@ export class GrandAudio implements PianoAudio {
   private convolver: ConvolverNode | null = null;
   private input: GainNode | null = null;
   private resonanceBus: SympatheticResonanceBus | null = null;
+  private mechanicalEngine: MechanicalActionEngine | null = null;
   private dynamicsCompressor: DynamicsCompressorNode | null = null;
   private safetyLimiter: DynamicsCompressorNode | null = null;
   private volume = 0.65;
@@ -291,6 +296,9 @@ export class GrandAudio implements PianoAudio {
     this.resonanceBus.connectSource(this.input);
     this.resonanceBus.connectDestination(this.dry);
 
+    // Milestone 3: Real-time Physical Mechanical Action Synthesizer
+    this.mechanicalEngine = new MechanicalActionEngine(c, this.dry);
+
     this.rebuildDynamicGraph();
     this.setVolume(this.volume);
     this.setReverb(this.reverb);
@@ -391,9 +399,10 @@ export class GrandAudio implements PianoAudio {
    */
   setPedal(index: number, down: boolean) {
     if (index === 2) {
-      // Sustain pedal (CC64) lifts all dampers
+      // Sustain pedal (CC64) lifts all dampers & triggers mechanical swoosh
       this.isSustained = down;
       this.resonanceBus?.setSustain(down, this.context?.currentTime);
+      this.mechanicalEngine?.triggerPedalSustainAction(down, this.context?.currentTime);
     }
   }
 
@@ -522,6 +531,9 @@ export class GrandAudio implements PianoAudio {
       const gain = c.createGain();
       gain.gain.value = voiceGain;
 
+      // Physical hammer impact keybed thud & felt slap
+      this.mechanicalEngine?.triggerHammerImpact(midi, velocity, at);
+
       // Dynamic acoustic harmonic filtering: LIVE profile preserves full transient brightness, DEMO profile models warm room dynamics
       const filter = c.createBiquadFilter();
       filter.type = 'lowpass';
@@ -535,12 +547,20 @@ export class GrandAudio implements PianoAudio {
         filter.Q.value = filterSettings.Q;
       }
 
+      // Non-linear physical timbre exciter (high-frequency felt compression harmonics)
+      const timbre = calculateDynamicTimbreExcitation(velocity);
+      const exciter = c.createBiquadFilter();
+      exciter.type = 'highshelf';
+      exciter.frequency.value = timbre.brightnessCutoff;
+      exciter.gain.value = soft ? Math.min(0, timbre.harmonicBoostDb) : timbre.harmonicBoostDb;
+
       // Natural acoustic stereo spread (soundboard bass on left, treble on right)
       const pan = c.createStereoPanner();
       pan.pan.value = Math.max(-0.75, Math.min(0.75, ((midi - 60) / 72) * 0.65));
 
       source.connect(filter);
-      filter.connect(gain);
+      filter.connect(exciter);
+      exciter.connect(gain);
       gain.connect(pan);
       pan.connect(this.input!);
 
@@ -642,6 +662,7 @@ export class GrandAudio implements PianoAudio {
       return;
     }
     const t = this.context.currentTime;
+    this.mechanicalEngine?.triggerDamperRelease(voice.midi, t);
     applyDamperTouchEnvelope(voice.gain, t, seconds);
     voice.source.stop(t + seconds + 0.02);
   }
@@ -678,6 +699,7 @@ export class GrandAudio implements PianoAudio {
     this.abort.abort();
     this.silence();
     this.resonanceBus?.disconnect();
+    this.mechanicalEngine?.disconnect();
     void this.context?.close();
     this.raw.clear();
     this.buffers.clear();

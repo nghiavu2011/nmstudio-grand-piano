@@ -1072,31 +1072,31 @@ export default function Home() {
               <optgroup label={locale === 'vi' ? '★ Độc quyền N&Mstudio' : '★ N&Mstudio Originals'}>
                 <option value="prelude">Atelier Prelude · Original</option>
               </optgroup>
-              <optgroup label={locale === 'vi' ? '🎼 Cổ điển (Classical)' : '🎼 Classical Repertoire'}>
-                {REPERTOIRE.filter(p => p.category === 'CLASSICAL').map(piece => (
-                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
-                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Sắp ra mắt)' : '(In queue)') : ''}
-                  </option>
-                ))}
-              </optgroup>
               <optgroup label={locale === 'vi' ? '🇻🇳 Tuyệt phẩm Việt Nam' : '🇻🇳 Vietnamese Masterpieces'}>
                 {REPERTOIRE.filter(p => p.category === 'VIETNAMESE').map(piece => (
                   <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
-                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Sắp ra mắt)' : '(In queue)') : ''}
+                    {piece.title} — {piece.composer}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label={locale === 'vi' ? '🎹 Hiện đại & Lãng mạn' : '🎹 Modern & Contemporary'}>
-                {REPERTOIRE.filter(p => p.category === 'MODERN PIANO').map(piece => (
+              <optgroup label={locale === 'vi' ? '🌍 Quốc tế & Bất hủ' : '🌍 International Classics'}>
+                {REPERTOIRE.filter(p => p.category === 'INTERNATIONAL POP').map(piece => (
                   <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
-                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Đang chuẩn bị)' : '(In queue)') : ''}
+                    {piece.title} — {piece.composer}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={locale === 'vi' ? '🌸 Nhạc Châu Á' : '🌸 Asian Hits'}>
+                {REPERTOIRE.filter(p => p.category === 'ASIAN POP').map(piece => (
+                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
+                    {piece.title} — {piece.composer}
                   </option>
                 ))}
               </optgroup>
               <optgroup label={locale === 'vi' ? '🎬 Nhạc phim & Điện ảnh' : '🎬 Cinematic Themes'}>
                 {REPERTOIRE.filter(p => p.category === 'CINEMATIC').map(piece => (
                   <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
-                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Đang chuẩn bị)' : '(In queue)') : ''}
+                    {piece.title} — {piece.composer}
                   </option>
                 ))}
               </optgroup>
