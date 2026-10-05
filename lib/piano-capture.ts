@@ -145,13 +145,13 @@ export function recordPiano(
       ctx.fillRect(0, 765, 1920, 315);
       ctx.textAlign = 'left';
       ctx.fillStyle = '#d5c295';
-      ctx.font = 'italic 68px Georgia';
-      ctx.fillText('g.', 66, 89);
+      ctx.font = 'italic 54px Georgia';
+      ctx.fillText('N&M', 45, 89);
       ctx.font = '22px sans-serif';
-      ctx.fillText('GRAND ATELIER', 139, 80);
+      ctx.fillText('N&Mstudio Musical instrument', 170, 80);
       ctx.font = '17px sans-serif';
       ctx.fillStyle = '#c4cbbd';
-      ctx.fillText('created by anionex and astra', 140, 113);
+      ctx.fillText('NMstudio + anionex + astra', 170, 113);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ede8d7';
       ctx.font = '23px sans-serif';
@@ -160,8 +160,8 @@ export function recordPiano(
       ctx.font = '17px sans-serif';
       ctx.fillText(
         view === 'mechanism'
-          ? '琴键 · 顶杆 · 琴槌 · 制音器 / 实时联动'
-          : '实时画面与钢琴音频录制 / 非预渲染动画',
+          ? 'Phím · Đòn bẩy · Búa gõ · Damper / Tương tác thời gian thực'
+          : 'Ghi âm & hình ảnh trực tiếp / Direct Piano Recording',
         1854,
         111,
       );
@@ -174,7 +174,7 @@ export function recordPiano(
       ctx.fillStyle = '#d5c295';
       ctx.fillText(
         [...world.held].map(noteName).join('  ') ||
-          '让每一次触键，都有回响。',
+          'Để mỗi lần chạm phím, đều ngân vang.',
         1850,
         852,
       );

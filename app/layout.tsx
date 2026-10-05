@@ -13,9 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Grand Atelier | A world of resonance',
+  title: 'N&Mstudio Musical instrument | Đàn Grand Piano 3D',
   description:
-    'An interactive 88-key grand piano. Explore three environments and the real-time motion of hammers, strings and pedals.',
+    'Đàn Grand Piano 3D tương tác 88 phím cơ học chuyên nghiệp. N&Mstudio Musical instrument.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="vi" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

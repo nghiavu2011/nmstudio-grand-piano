@@ -131,11 +131,55 @@ function textPlate(
   c.width = 1024;
   c.height = 128;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#d6b77f';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '48px Georgia';
-  ctx.fillText(text, 512, 64);
+
+  if (text.includes('N&M') || text.includes('GRAND')) {
+    const grad = ctx.createLinearGradient(0, 0, 1024, 0);
+    grad.addColorStop(0, '#d4af37');
+    grad.addColorStop(0.3, '#f7e7a9');
+    grad.addColorStop(0.5, '#fff6d6');
+    grad.addColorStop(0.7, '#f7e7a9');
+    grad.addColorStop(1, '#d4af37');
+
+    ctx.fillStyle = grad;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+
+    // Golden decorative lines
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(80, 64);
+    ctx.lineTo(210, 64);
+    ctx.arc(220, 64, 3.5, 0, Math.PI * 2);
+    ctx.moveTo(814, 64);
+    ctx.lineTo(944, 64);
+    ctx.arc(804, 64, 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 44px "Cinzel", "Times New Roman", Georgia, serif';
+    ctx.letterSpacing = '5px';
+    ctx.fillText(text, 512, 64);
+  } else if (text === 'G A' || text === 'N&M') {
+    const grad = ctx.createLinearGradient(0, 0, 1024, 0);
+    grad.addColorStop(0, '#d4af37');
+    grad.addColorStop(0.5, '#fff6d6');
+    grad.addColorStop(1, '#d4af37');
+    ctx.fillStyle = grad;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 52px Georgia, serif';
+    ctx.fillText('N&M', 512, 64);
+  } else {
+    ctx.fillStyle = '#d6b77f';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '48px Georgia';
+    ctx.fillText(text, 512, 64);
+  }
+
   const t = new T.CanvasTexture(c);
   t.colorSpace = T.SRGBColorSpace;
   const m = new T.Mesh(
@@ -423,8 +467,8 @@ export class PianoModel {
     this.removable.push(fall);
     const brand = textPlate(
       this.group,
-      'G R A N D   A T E L I E R',
-      0.53,
+      'N&Mstudio  Musical instrument',
+      0.65,
       0.05,
       [0, 0.925, -0.965],
       [0.2, Math.PI, 0],
@@ -667,7 +711,7 @@ export class PianoModel {
     }
     box(desk, [0.59, MUSIC_DESK_HEIGHT, MUSIC_DESK_DEPTH], [0, MUSIC_DESK_HEIGHT/2, 0], black, 0.006).name='Music-desk panel';
     box(desk, [0.72, 0.022, 0.073], [0, 0.013, -0.025], black, 0.004);
-    textPlate(desk, 'G A', 0.1, 0.05, [0, 0.13, -0.012], [0, Math.PI, 0]);
+    textPlate(desk, 'N&M', 0.1, 0.05, [0, 0.13, -0.012], [0, Math.PI, 0]);
     for (const [x, z] of [
       [-0.66, -0.99],
       [0.66, -0.99],
@@ -1010,5 +1054,25 @@ export class PianoModel {
       k.strike = HAMMER_STROKE_SECONDS;
       k.energy = 1;
     }
+  }
+  setFinish(finish: 'black' | 'white') {
+    if (finish === 'white') {
+      this.caseMaterial.color.set('#f7f6f2');
+      this.caseMaterial.roughness = 0.13;
+      this.caseMaterial.clearcoat = 1.0;
+      this.caseMaterial.clearcoatRoughness = 0.04;
+      if (this.benchSeat?.material && 'color' in this.benchSeat.material) {
+        (this.benchSeat.material as T.MeshStandardMaterial).color.set('#ebe5d8');
+      }
+    } else {
+      this.caseMaterial.color.set('#080b0b');
+      this.caseMaterial.roughness = 0.16;
+      this.caseMaterial.clearcoat = 1.0;
+      this.caseMaterial.clearcoatRoughness = 0.055;
+      if (this.benchSeat?.material && 'color' in this.benchSeat.material) {
+        (this.benchSeat.material as T.MeshStandardMaterial).color.set('#171613');
+      }
+    }
+    this.caseMaterial.needsUpdate = true;
   }
 }

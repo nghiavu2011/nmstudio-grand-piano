@@ -1,3 +1,4 @@
+import { DonationWidget } from '@/components/donation-widget';
 'use client';
 import {
   useEffect,
@@ -68,7 +69,12 @@ const EMPTY: PianoSnapshot = {
   lastNote: null,
 };
 const SCENES = ['音乐厅', '日光工作室', '月夜露台'];
-const ENV_NAMES = [
+const ENV_SUBTITLES_VI = [
+  'ĐẠI SẢNH HÒA NHẠC',
+  'STUDIO ÁNH SÁNG',
+  'ĐÊM TRĂNG SAO',
+];
+const ENV_SUBTITLES_EN = [
   'THE CONCERT HALL',
   'THE DAYLIGHT STUDIO',
   'THE MOONLIT TERRACE',
@@ -95,20 +101,20 @@ const PEDALS = [
   },
 ];
 export default function Home() {
-  const [locale, setLocale] = useState<Locale>('en');
-  const localeRef = useRef<Locale>('en');
+  const [locale, setLocale] = useState<Locale>('vi');
+  const localeRef = useRef<Locale>('vi');
   const t = (text: string) => translate(locale, text);
   const applyLocale = useCallback((next: Locale) => {
     localeRef.current = next;
     setLocale(next);
-    document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en';
-    document.title = next === 'zh' ? 'Grand Atelier | 指尖之下，万千共鸣' : 'Grand Atelier | A world of resonance';
+    document.documentElement.lang = next === 'vi' ? 'vi' : 'en';
+    document.title = next === 'vi' ? 'N&Mstudio Musical instrument | Đàn Grand Piano 3D' : 'N&Mstudio Musical instrument | 3D Grand Piano';
   }, []);
   useEffect(() => {
     const update = () => {
       let saved: string | null = null;
       try { saved = localStorage.getItem('atelier-language'); } catch { /* Storage can be disabled. */ }
-      if (saved === 'zh' || saved === 'en') { applyLocale(saved); return; }
+      if (saved === 'vi' || saved === 'en') { applyLocale(saved); return; }
       const next = browserLocale(navigator.languages?.length ? navigator.languages : [navigator.language]);
       applyLocale(next);
     };
@@ -117,7 +123,7 @@ export default function Home() {
     return () => window.removeEventListener('languagechange', update);
   }, [applyLocale]);
   const toggleLanguage = () => {
-    const next = locale === 'zh' ? 'en' : 'zh';
+    const next = locale === 'vi' ? 'en' : 'vi';
     applyLocale(next);
     try { localStorage.setItem('atelier-language', next); } catch { /* Switching still works without persistence. */ }
   };
@@ -140,6 +146,12 @@ export default function Home() {
   const [immersive, setImmersive] = useState(false);
   const [dockMinimized, setDockMinimized] = useState(true);
   const [immersiveControls, setImmersiveControls] = useState(false);
+  const [finish, setFinish] = useState<'black' | 'white'>('black');
+  const changeFinish = (next: 'black' | 'white') => {
+    setFinish(next);
+    world.current?.setFinish(next);
+    try { localStorage.setItem('atelier-finish', next); } catch { /* ignore */ }
+  };
   const toggleImmersive = (value: boolean) => {
     setImmersive(value);
     setImmersiveControls(false);
@@ -229,8 +241,8 @@ export default function Home() {
         } catch {
           if (disposed) return;
           if (attempt === 1)
-            setError(localeRef.current === 'zh'
-              ? `${pieceTitle('zh', piece.title)} 载入失败，请刷新重试；可先选择其他曲目。`
+            setError(localeRef.current === 'vi'
+              ? `${pieceTitle('vi', piece.title)} tải không thành công, vui lòng thử lại hoặc chọn bài khác.`
               : `${pieceTitle('en', piece.title)} failed to load. Refresh to retry, or choose another piece.`);
         }
       }
@@ -283,6 +295,13 @@ export default function Home() {
           w.setView(config.current.view);
           w.model.lidOpen = config.current.lid;
           w.slow = config.current.slow;
+          let savedFinish: 'black' | 'white' = 'black';
+          try {
+            const f = localStorage.getItem('atelier-finish');
+            if (f === 'black' || f === 'white') savedFinish = f;
+          } catch {}
+          setFinish(savedFinish);
+          w.setFinish(savedFinish);
           w.model.startEntrance(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
           state.emit();
           setReady(true);
@@ -688,17 +707,16 @@ export default function Home() {
       <div ref={host} className="world" aria-label={t("可交互三角钢琴 3D 场景")} />
       <div className="scene-vignette" />
       <header className="topbar">
-        <Link className="brand" href="/">
-          <b>g.</b>
-          <span className="brand-divider" />
-          GRAND ATELIER
+        <Link className="brand" href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/logo.png" alt="N&Mstudio Logo" style={{ width: 26, height: 26, borderRadius: 6, objectFit: 'contain' }} />
+          <span style={{ fontWeight: 800, letterSpacing: '0.04em' }}>N&Mstudio Musical instrument</span>
         </Link>
-        <span className="top-caption">THE INTERACTIVE PIANO EXPERIENCE</span>
+        <span className="top-caption">{locale === 'vi' ? 'TRẢI NGHIỆM ĐÀN PIANO TƯƠNG TÁC' : 'THE INTERACTIVE PIANO EXPERIENCE'}</span>
         <div className="header-actions">
           <button className="language-switch" onClick={toggleLanguage}
-            aria-label={locale === 'zh' ? 'Switch to English' : '切换为中文'}
-            title={locale === 'zh' ? 'Switch to English' : '切换为中文'}>
-            <span lang="zh-CN" className={locale === 'zh' ? 'active' : ''}>中</span>
+            aria-label={locale === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            title={locale === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}>
+            <span lang="vi" className={locale === 'vi' ? 'active' : ''}>VN</span>
             <span aria-hidden="true">/</span>
             <span lang="en" className={locale === 'en' ? 'active' : ''}>EN</span>
           </button>
@@ -762,26 +780,46 @@ export default function Home() {
       <section className="instrument-heading">
         <p className="eyebrow">
           <span />
-          THE CONCERT COLLECTION · 01
+          {locale === 'vi' ? 'BỘ SƯU TẬP HÒA NHẠC · 01' : 'THE CONCERT COLLECTION · 01'}
         </p>
-        <h1>
-          Concert
+        <h1 className="nm-brand-title">
+          <span className="brand-nm">N&amp;M</span>
           <br />
-          <em>Grand.</em>
+          <em className="brand-studio">studio.</em>
         </h1>
         <p className="instrument-subtitle">{t("指尖之下，万千共鸣。")}</p>
+        <div className="finish-pill-selector">
+          <button
+            type="button"
+            className={`finish-pill ${finish === 'black' ? 'active' : ''}`}
+            onClick={() => changeFinish('black')}
+            title={locale === 'vi' ? 'Sơn đen bóng hoàng gia (Ebony)' : 'Ebony gloss finish'}
+          >
+            <span className="finish-dot finish-dot-ebony" />
+            <span>{locale === 'vi' ? 'Đen bóng' : 'Ebony'}</span>
+          </button>
+          <button
+            type="button"
+            className={`finish-pill ${finish === 'white' ? 'active' : ''}`}
+            onClick={() => changeFinish('white')}
+            title={locale === 'vi' ? 'Sơn trắng sứ ngọc trai (Ivory)' : 'Ivory white finish'}
+          >
+            <span className="finish-dot finish-dot-white" />
+            <span>{locale === 'vi' ? 'Trắng sứ' : 'Ivory White'}</span>
+          </button>
+        </div>
         <div className="instrument-spec">
           <span>
-            88 <small>KEYS</small>
+            88 <small>{locale === 'vi' ? 'PHÍM' : 'KEYS'}</small>
           </span>
           <i />
           <span>
-            3 <small>PEDALS</small>
+            3 <small>{locale === 'vi' ? 'BÀN ĐẠP' : 'PEDALS'}</small>
           </span>
         </div>
       </section>
       <nav className="scene-selector" aria-label={t("环境选择")}>
-        <p className="eyebrow">CHOOSE YOUR ATMOSPHERE</p>
+        <p className="eyebrow">{locale === 'vi' ? 'CHỌN KHÔNG GIAN' : 'CHOOSE YOUR ATMOSPHERE'}</p>
         {SCENES.map((name, i) => (
           <button
             key={name}
@@ -800,7 +838,7 @@ export default function Home() {
             </span>
             <span>
               <strong>{t(name)}</strong>
-              <small>{ENV_NAMES[i]}</small>
+              <small>{locale === 'vi' ? ENV_SUBTITLES_VI[i] : ENV_SUBTITLES_EN[i]}</small>
             </span>
             <span className="scene-index">
               {scene === i ? <Check size={13} /> : <>0{i + 1}</>}
@@ -901,11 +939,35 @@ export default function Home() {
             aria-label={t("开启琴盖")}
           />
         </label>
+        <div className="finish-settings-row">
+          <div className="range-label" style={{ marginTop: 14, marginBottom: 8 }}>
+            <span>{locale === 'vi' ? 'Màu vỏ đàn' : 'Piano Finish'}</span>
+            <span>{finish === 'white' ? (locale === 'vi' ? 'Trắng sứ' : 'Ivory White') : (locale === 'vi' ? 'Đen bóng' : 'Ebony Gloss')}</span>
+          </div>
+          <div className="finish-buttons">
+            <button
+              type="button"
+              className={`finish-btn ${finish === 'black' ? 'selected' : ''}`}
+              onClick={() => changeFinish('black')}
+            >
+              <span className="finish-swatch swatch-black" />
+              <span>{locale === 'vi' ? 'Đen bóng' : 'Ebony'}</span>
+            </button>
+            <button
+              type="button"
+              className={`finish-btn ${finish === 'white' ? 'selected' : ''}`}
+              onClick={() => changeFinish('white')}
+            >
+              <span className="finish-swatch swatch-white" />
+              <span>{locale === 'vi' ? 'Trắng sứ' : 'Ivory'}</span>
+            </button>
+          </div>
+        </div>
         <p className="settings-note">{t("环境切换会同步改变光照与空间声学。")}</p>
       </aside>
       {view === 'mechanism' && (
         <aside className="mechanism-panel">
-          <p className="eyebrow">INSIDE THE INSTRUMENT</p>
+          <p className="eyebrow">{locale === 'vi' ? 'BÊN TRONG BỘ CƠ ĐÀN' : 'INSIDE THE INSTRUMENT'}</p>
           <h2>{t("看见声音的诞生")}</h2>
           <p>{t("外壳已揭开。按下琴键，观察击弦过程。")}</p>
           <ol>
@@ -1024,7 +1086,7 @@ export default function Home() {
               <ChevronLeft size={15} />
             </button>
             <span>
-              OCTAVE <b>{octave}</b>
+              {locale === 'vi' ? 'QUÃNG' : 'OCTAVE'} <b>{octave}</b>
             </span>
             <button
               aria-label={t("升高八度")}
@@ -1058,7 +1120,7 @@ export default function Home() {
               key={k.midi}
               data-midi={k.midi}
               tabIndex={-1}
-              aria-label={`${locale === 'zh' ? '弹奏' : 'Play'} ${noteName(k.midi)}`}
+              aria-label={`${locale === 'vi' ? 'Chơi phím' : 'Play'} ${noteName(k.midi)}`}
               className={`piano-key ${k.black ? 'black-key' : 'white-key'} ${snapshot.held.includes(k.midi) ? 'pressed' : ''}`}
               style={{
                 left: `${(k.left / white) * 100}%`,
@@ -1078,7 +1140,7 @@ export default function Home() {
               <button
                 key={p.name}
                 title={t(p.detail)}
-                aria-label={locale === 'zh' ? `${p.name}踏板，按住踩下，松开释放` : `${t(p.name)} pedal; hold to press, release to lift`}
+                aria-label={locale === 'vi' ? `${t(p.name)}, nhấn giữ để đạp, nhả để thả` : `${t(p.name)} pedal; hold to press, release to lift`}
                 aria-pressed={snapshot.pedals[i]}
                 className={'pedal ' + (snapshot.pedals[i] ? 'depressed' : '')}
                 onPointerDown={(e) => {
@@ -1117,78 +1179,100 @@ export default function Home() {
         <canvas ref={meter} width={110} height={24} />
         <span>
           {snapshot.sounding.length
-            ? `${snapshot.sounding.length} VOICES`
+            ? `${snapshot.sounding.length} ${locale === 'vi' ? 'DÂY RUNG' : 'VOICES'}`
             : 'A4 = 440 Hz'}
         </span>
       </div>
       <div ref={tooltip} className="note-tooltip" />
       {!ready && !error && (
         <div className="scene-loading">
-          <span />{t("正在调校琴弦与光线…")}</div>
+          <span />{locale === 'vi' ? 'Đang chuẩn bị không gian & ánh sáng…' : 'Tuning strings and lighting…'}</div>
       )}
       {error && (
         <div role="alert" className="load-error">
           {t(error)}
-          <button aria-label={t("关闭提示")} onClick={() => setError('')}>
+          <button aria-label={locale === 'vi' ? 'Đóng thông báo' : 'Dismiss'} onClick={() => setError('')}>
             <X size={16} />
           </button>
         </div>
       )}
       <footer className="bottom-signature">
-        <span>created by <a href="https://github.com/Anionex" target="_blank" rel="noopener noreferrer">anionex</a> and astra</span>
-        <button onClick={() => changeHelp(true)}>{t("演奏指南与音源")}<ArrowUpRight size={10} />
+        <span>NMstudio + <a href="https://github.com/Anionex" target="_blank" rel="noopener noreferrer">anionex</a> + astra</span>
+        <button onClick={() => changeHelp(true)}>
+          {locale === 'vi' ? 'Hướng dẫn chơi & Nguồn âm' : 'Guide & credits'}<ArrowUpRight size={10} />
         </button>
       </footer>
       <Dialog open={help} onOpenChange={changeHelp}>
         <DialogContent className="help-dialog">
-          <DialogTitle>{t("让每一次触键，都有回响。")}</DialogTitle>
-          <DialogDescription>{t("Grand Atelier · 演奏与观察指南")}</DialogDescription>
-          <div className="help-section">
-            <h3>
-              <Piano size={17} />{t("开始演奏")}</h3>
-            <p>{t("先点击「开启声音」。选择「靠近演奏」，直接按住 3D 琴键，或点击下方屏幕琴键。拖过琴键可滑奏，多点触控可弹和弦。")}</p>
-            <p>{t("从演奏者视角，左低右高。中央 C 是从左数第 40 个琴键、第 24 个白键：C4 / MIDI 60 / 261.63 Hz。琴键上有 C4 标记。")}</p>
-            <p>
-              <kbd>A S D F G H J K L ; &apos;</kbd>{t("对应白键；上排")}{' '}
-              <kbd>W E T Y U O P ]</kbd>{t("对应黑键。方向键")}<kbd>← →</kbd>{' '}{t("切换八度，")}<kbd>Esc</kbd>{t("立即释放全部音符与踏板。")}</p>
-          </div>
-          <div className="help-section">
-            <h3>
-              <Music2 size={17} />{t("示奏曲目")}</h3>
-            <p>{t("《Kiss the Rain》（Yiruma）已内置，选择后直接演奏，曲目文件由站点所有者提供。另可导入自己的钢琴 MIDI：保留原始音高、变速、音符起止、力度及三踏板，不量化、不自动移调。导入文件只在当前浏览器会话中读取，不上传。")}</p>
-            <p>{t("谱架按小节显示 MIDI 转写谱：拍号、调号、临时升降与还原记号、休止符、附点、延音线及踏板线随曲目生成，按播放位置自动翻页。谱面以三十二分音符网格整理演奏时差，音频仍使用原始时间；未提供的调号按无升降调号显示，指法和表情不猜测。自由演奏记谱采用 120 BPM。")}</p>
-          </div>
-          <div className="help-section">
-            <h3>
-              <Music2 size={17} />{t("三枚踏板")}</h3>
-            {PEDALS.map((p) => (
-              <p key={p.name}>
-                <strong>{t(p.name)}</strong> <kbd>{t(p.key)}</kbd> — {t(p.detail)}{t("。按住踩下，松开释放。")}</p>
-            ))}
-          </div>
-          <div className="help-section">
-            <h3>
-              <Layers size={17} />{t("观察机械")}</h3>
-            <p>{t("切换「机械观察」后，遮挡部件会揭开。每个音符都有独立的琴键、联动杆、顶杆、琴槌和制音器。慢动作仅放慢视觉，不改变音高或声音速度。高音区按真实结构不设制音器。")}</p>
-            <p>{t("这是以真实工作原理搭建的可视化模型，并非某一品牌的工程复刻。琴弦振幅为便于观察有所放大。")}</p>
-          </div>
-          <p className="credits">{t("音源：")}<a
-              href="https://sfzinstruments.github.io/pianos/salamander/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Salamander Grand Piano
-            </a>{' '}
-            · Alexander Holm ·{' '}
-            <a
-              href="https://creativecommons.org/licenses/by/3.0/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              CC BY 3.0
-            </a>{t("。采用 Tone.js 分发的 30 个 MP3 采样，经过实时移调、力度滤波与混响处理。Three.js 实时渲染。")}</p>
+          <DialogTitle>
+            {locale === 'vi' ? 'Để mỗi lần chạm phím, đều ngân vang.' : 'Let every touch resonate.'}
+          </DialogTitle>
+          <DialogDescription>
+            {locale === 'vi' ? 'N&Mstudio · Hướng dẫn chơi đàn & Khám phá cơ học' : 'N&Mstudio · Playing & exploration guide'}
+          </DialogDescription>
+          {locale === 'vi' ? (
+            <>
+              <div className="help-section">
+                <h3><Piano size={17} />Bắt đầu chơi đàn</h3>
+                <p>Nhấp vào nút «Bật âm thanh» ở góc trên. Chọn góc nhìn «Góc người chơi» để trực tiếp chạm vào phím đàn 3D, hoặc sử dụng bàn phím ảo bên dưới. Bạn có thể kéo rê chuột để vuốt phím (glissando) và nhấn nhiều ngón/phím cùng lúc để chơi hợp âm.</p>
+                <p>Theo góc nhìn nghệ sĩ: phím trầm bên trái, phím cao bên phải. Phím Đô trung (Middle C - C4 / MIDI 60 / 261.63 Hz) nằm ở phím trắng thứ 24 từ trái sang và có ký hiệu C4 trên mặt phím.</p>
+                <p>
+                  <kbd>A S D F G H J K L ; &apos;</kbd> tương ứng các phím trắng; hàng trên{' '}
+                  <kbd>W E T Y U O P ]</kbd> tương ứng các phím đen. Phím mũi tên <kbd>← →</kbd> chuyển quãng tám (octave), phím <kbd>Esc</kbd> nhả tức thì toàn bộ phím và pedal.
+                </p>
+              </div>
+              <div className="help-section">
+                <h3><Music2 size={17} />Tác phẩm mẫu &amp; Tệp MIDI</h3>
+                <p>Hệ thống tích hợp sẵn các kiệt tác quốc tế kinh điển (Canon in D, Für Elise, River Flows in You) và làn điệu Việt Nam bất hủ (Bèo Dạt Mây Trôi, Diễm Xưa, Mẹ Yêu Con). Bạn có thể chọn để đàn tự động tấu khúc với bộ cơ búa gõ chân thực.</p>
+                <p>Bạn cũng có thể tải lên tệp MIDI của riêng mình: hệ thống phân tích cao độ, lực gõ, tốc độ và bàn đạp pedal thời gian thực hoàn toàn cục bộ trên trình duyệt, không gửi dữ liệu ra ngoài.</p>
+              </div>
+              <div className="help-section">
+                <h3><Music2 size={17} />Hệ thống 3 Bàn đạp (Pedals)</h3>
+                {PEDALS.map((p) => (
+                  <p key={p.name}>
+                    <strong>{t(p.name)}</strong> <kbd>{t(p.key)}</kbd> — {t(p.detail)}. Nhấn giữ để kích hoạt, nhả để thả bàn đạp.
+                  </p>
+                ))}
+              </div>
+              <div className="help-section">
+                <h3><Layers size={17} />Khám phá Bộ cơ học 3D</h3>
+                <p>Chuyển sang góc nhìn «Bộ cơ học» để mở thùng đàn. Mỗi phím bấm đều liên kết cơ học với đòn bẩy wippen, chốt jack, búa gõ bọc nỉ đập dây và đòn nâng damper ngắt vang. Bật chế độ «Chuyển động chậm» để quan sát chi tiết từng micro-giây vận hành.</p>
+              </div>
+              <p className="credits">Âm thanh mẫu: <a href="https://sfzinstruments.github.io/pianos/salamander/" target="_blank" rel="noreferrer">Salamander Grand Piano</a> · Alexander Holm · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>. 30 bộ mẫu MP3 chất lượng cao đa tầng lực gõ qua Tone.js &amp; Three.js kết xuất 3D thời gian thực.</p>
+            </>
+          ) : (
+            <>
+              <div className="help-section">
+                <h3><Piano size={17} />Start Playing</h3>
+                <p>Click «Enable sound» in the top header. Select «Play close-up» to play the 3D keys directly, or use the interactive onscreen keyboard below. Drag across keys for glissando, and use multi-touch or multiple keys for rich chords.</p>
+                <p>From the pianist perspective, pitch rises from left to right. Middle C is the 40th key and 24th white key from the left: C4 / MIDI 60 / 261.63 Hz, labeled on the key slip.</p>
+                <p>
+                  <kbd>A S D F G H J K L ; &apos;</kbd> map to white keys; the upper row{' '}
+                  <kbd>W E T Y U O P ]</kbd> maps to black keys. Arrow keys <kbd>← →</kbd> shift octaves, and <kbd>Esc</kbd> instantly releases all keys and pedals.
+                </p>
+              </div>
+              <div className="help-section">
+                <h3><Music2 size={17} />Repertoire &amp; Custom MIDI</h3>
+                <p>Enjoy built-in masterworks (Canon in D, Für Elise, River Flows in You, Vietnamese folk pieces). You can also import your own piano MIDI files: timing, velocity, and pedals are processed directly in your browser without uploading to any server.</p>
+              </div>
+              <div className="help-section">
+                <h3><Music2 size={17} />Three Physical Pedals</h3>
+                {PEDALS.map((p) => (
+                  <p key={p.name}>
+                    <strong>{t(p.name)}</strong> <kbd>{t(p.key)}</kbd> — {t(p.detail)}. Hold to press, release to lift.
+                  </p>
+                ))}
+              </div>
+              <div className="help-section">
+                <h3><Layers size={17} />Action Mechanism Inspection</h3>
+                <p>Switch to «Inside the action» to reveal the internal escapement mechanism: key lever, wippen, repetition lever, jack, felt hammer, and string dampers. Turn on «Slow motion» to study the rapid strike and rebound sequence.</p>
+              </div>
+              <p className="credits">Sound engine: <a href="https://sfzinstruments.github.io/pianos/salamander/" target="_blank" rel="noreferrer">Salamander Grand Piano</a> · Alexander Holm · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>. High-fidelity velocity samples processed via Tone.js with real-time Three.js rendering.</p>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+      <DonationWidget locale={locale} />
     </main>
   );
 }

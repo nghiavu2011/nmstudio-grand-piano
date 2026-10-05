@@ -3,7 +3,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PianoModel, box, rod } from './piano-model';
 import { PianoSheet } from './piano-sheet';
-import { buildRoomDetail } from './piano-room-detail';
 
 export type View = 'overview' | 'perform' | 'mechanism';
 const V = (x: number, y: number, z: number) => new T.Vector3(x, y, z);
@@ -120,219 +119,268 @@ export class PianoWorld {
     el.addEventListener('contextmenu', this.preventContext);
     this.animation = requestAnimationFrame(this.animate);
   }
+  setFinish(finish: 'black' | 'white') {
+    this.model.setFinish(finish);
+  }
+
   private buildEnvironments() {
     const matte = (color: string, roughness = 0.85, metalness = 0) =>
       new T.MeshStandardMaterial({ color, roughness, metalness });
+
     for (let index = 0; index < 3; index++) {
       const group = new T.Group();
-      group.name = ['Concert hall', 'Daylight studio', 'Moonlit terrace'][
-        index
-      ];
+      group.name = ['Concert hall', 'Daylight studio', 'Moonlit terrace'][index];
       this.environments.push(group);
       this.scene.add(group);
-      const floor=box(
+
+      // Floor plane
+      const floor = box(
         group,
-        [40, 0.08, index === 2 ? 10 : 40],
-        [0, -0.04, index === 2 ? -0.2 : 0],
+        [40, 0.08, 40],
+        [0, -0.04, -0.2],
         matte(
-          ['#171d19', '#b3aaa0', '#27343c'][index],
-          index === 0 ? 0.32 : 0.55,
-          0.08,
+          ['#111413', '#ede7de', '#0b1118'][index],
+          index === 0 ? 0.32 : index === 1 ? 0.65 : 0.4,
+          index === 0 ? 0.06 : 0.02,
         ),
       );
-      floor.name='Ground plane';
+      floor.name = 'Ground plane';
+
       if (index === 0) {
-        const grain = matte('#222a22', 0.65);
-        for (let i = -18; i <= 18; i++)
-          box(group, [0.004, 0.002, 16], [i * 0.31, 0.001, 0], grain);
-        const dark = matte('#181f19');
-        box(group, [18, 8, 0.15], [0, 3.9, 4.3], dark);
-        const slatMats = [matte('#44402d', 0.75), matte('#303326', 0.75)];
-        for (let i = -55; i <= 55; i++)
-          box(
-            group,
-            [0.055, 6, 0.11],
-            [i * 0.16, 2.98, 4.17],
-            slatMats[i % 3 === 0 ? 0 : 1],
-          );
-        const glow = new T.MeshBasicMaterial({ color: '#debc79' });
-        for (const x of [-4.7, -2.7, 2.7, 4.7]) {
-          box(group, [0.017, 5.3, 0.025], [x, 2.65, 4.02], glow);
-          const lamp = new T.PointLight('#e5bf70', 8, 7, 2);
-          lamp.position.set(x, 2.6, 3.7);
+        // --- 1. CONCERT HALL (Đại sảnh Hòa nhạc Đẳng cấp) ---
+        // Solemn raised concert stage dais (Bục diễn trang trọng tôn vinh cây đàn)
+        const stage = box(group, [5.8, 0.08, 4.8], [0, 0.04, -0.2], matte('#181b19', 0.26, 0.06), 0.025);
+        stage.name = 'Concert stage dais';
+        // Champagne gold brass edge trim
+        box(group, [5.92, 0.02, 4.92], [0, 0.01, -0.2], matte('#c4a25a', 0.28, 0.75));
+
+        // Curving Acoustic shell backdrop with warm timber slats
+        const shellBack = box(group, [18, 8, 0.2], [0, 3.9, 4.4], matte('#1a1612', 0.65));
+        shellBack.name = 'Acoustic Shell Backdrop';
+
+        // Architectural fluted timber acoustic fins
+        const finMatA = matte('#33281e', 0.55);
+        const finMatB = matte('#271f17', 0.55);
+        for (let i = -45; i <= 45; i++) {
+          box(group, [0.06, 6.2, 0.12], [i * 0.18, 3.1, 4.25], i % 2 === 0 ? finMatA : finMatB);
+        }
+
+        // Grand architectural stage columns on flanks
+        for (const side of [-5.8, 5.8]) {
+          const col = new T.Mesh(new T.CylinderGeometry(0.38, 0.42, 8, 32), matte('#171411', 0.6));
+          col.position.set(side, 3.9, 4.1);
+          group.add(col);
+          // Column capital trim in brass
+          box(group, [0.9, 0.15, 0.9], [side, 6.8, 4.1], matte('#a68846', 0.35, 0.6));
+        }
+
+        // Warm stage uplights along the backdrop
+        const glow = new T.MeshBasicMaterial({ color: '#f3c77c' });
+        for (const x of [-4.5, -2.2, 2.2, 4.5]) {
+          box(group, [0.018, 5.6, 0.02], [x, 2.8, 4.15], glow);
+          const lamp = new T.PointLight('#e8bd69', 5.5, 6, 2);
+          lamp.position.set(x, 2.5, 3.8);
           group.add(lamp);
         }
+
+        // Dramatic soft spotlight beam shining down on the grand piano
         const beam = new T.Mesh(
-          new T.CylinderGeometry(0.06, 1.05, 5, 48, 1, true),
+          new T.CylinderGeometry(0.08, 1.35, 6.5, 48, 1, true),
           new T.MeshBasicMaterial({
-            color: '#e6d6a7',
+            color: '#ffeed1',
             transparent: true,
-            opacity: 0.016,
+            opacity: 0.028,
             depthWrite: false,
             side: T.DoubleSide,
           }),
         );
-        beam.position.set(0, 2.4, -0.1);
+        beam.position.set(0, 3.1, -0.2);
         group.add(beam);
+
       } else if (index === 1) {
-        const wall = matte('#c3c7be');
-        box(group, [18, 7, 0.2], [0, 3.45, 4.5], wall);
-        box(group, [0.2, 7, 15], [-6, 3.45, 0], wall);
-        const frame = matte('#666b5c', 0.4, 0.2);
-        const sky = new T.MeshBasicMaterial({ color: '#e1eef0' });
+        // --- 2. DAYLIGHT STUDIO (Studio nền be sáng với bục trang trọng) ---
+        // Warm bright beige gallery back wall
+        const wallBeige = matte('#f4eee6', 0.85);
+        box(group, [18, 7.5, 0.2], [0, 3.65, 4.5], wallBeige);
+        box(group, [0.2, 7.5, 16], [-6.2, 3.65, 0], wallBeige);
+
+        // Raised solemn travertine dais for piano and bench (Bục trang trọng)
+        const podium = box(group, [5.6, 0.08, 4.6], [0, 0.04, -0.2], matte('#ded6ca', 0.52), 0.025);
+        podium.name = 'Beige studio podium';
+        // Blonde Scandinavian oak trim
+        box(group, [5.72, 0.02, 4.72], [0, 0.01, -0.2], matte('#b89d7e', 0.42));
+
+        // Floor-to-ceiling architectural window opening with sheer light
+        const frameMat = matte('#4e4943', 0.4, 0.1);
+        const skyMat = new T.MeshBasicMaterial({ color: '#f8fafc' });
         for (let i = -2; i <= 2; i++) {
-          box(group, [1.45, 4.0, 0.02], [i * 1.58, 2.7, 4.36], sky);
-          box(group, [0.045, 4.2, 0.07], [i * 1.58 - 0.77, 2.7, 4.28], frame);
-          box(group, [1.55, 0.045, 0.07], [i * 1.58, 2.7, 4.27], frame);
+          box(group, [1.42, 4.4, 0.02], [i * 1.55, 2.9, 4.38], skyMat);
+          box(group, [0.045, 4.5, 0.07], [i * 1.55 - 0.74, 2.9, 4.3], frameMat);
+          box(group, [1.5, 0.045, 0.07], [i * 1.55, 2.9, 4.29], frameMat);
         }
-        box(group, [8.4, 0.1, 0.12], [0, 0.68, 4.23], frame);
-        box(group, [8.4, 0.1, 0.12], [0, 4.73, 4.23], frame);
-        const sunbeam = new T.MeshBasicMaterial({
-          color: '#e1c490',
+        box(group, [8.2, 0.08, 0.1], [0, 0.7, 4.26], frameMat);
+        box(group, [8.2, 0.08, 0.1], [0, 5.1, 4.26], frameMat);
+
+        // Soft sunbeams cast onto the floor
+        const sunbeamMat = new T.MeshBasicMaterial({
+          color: '#fff5e4',
           transparent: true,
-          opacity: 0.11,
+          opacity: 0.07,
           depthWrite: false,
         });
         for (let i = 0; i < 4; i++) {
           const p = box(
             group,
-            [0.68, 0.002, 5],
-            [i * 1.4 - 1.8, 0.001, 0.5],
-            sunbeam,
+            [0.72, 0.002, 5.8],
+            [i * 1.35 - 1.8, 0.001, 0.4],
+            sunbeamMat,
           );
-          p.rotation.y = 0.43;
+          p.rotation.y = 0.42;
           p.castShadow = false;
           p.receiveShadow = false;
         }
-        const pot = new T.Mesh(
-          new T.CylinderGeometry(0.33, 0.24, 0.6, 32),
-          matte('#6f7868'),
-        );
-        pot.position.set(3, 0.3, 2.1);
-        group.add(pot);
-        const green = matte('#3e5736');
-        for (let i = 0; i < 22; i++) {
-          const a = i * 2.399;
-          const stem = V(
-            3 + Math.sin(a) * 0.35,
-            1.0 + (i % 5) * 0.17,
-            2.1 + Math.cos(a) * 0.35,
-          );
-          rod(group, V(3, 0.54, 2.1), stem, 0.013, green);
-          const leafShape = new T.Shape();
-          leafShape.moveTo(0,-1);
-          leafShape.bezierCurveTo(-.65,-.55,-.6,.45,0,1);
-          leafShape.bezierCurveTo(.6,.45,.65,-.55,0,-1);
-          const leafGeometry = new T.ShapeGeometry(leafShape,12);
-          const positions = leafGeometry.attributes.position;
-          for(let j=0;j<positions.count;j++)positions.setZ(j,.18*positions.getY(j)**2+.15*Math.abs(positions.getX(j)));
-          leafGeometry.computeVertexNormals();
-          const leaf = new T.Mesh(leafGeometry, green);
-          green.side=T.DoubleSide;
-          leaf.position.copy(stem);
-          leaf.scale.set(0.19, 0.3, 0.2);
-          leaf.rotation.set(0.5, a, 0.5);
-          group.add(leaf);
-        }
+
+        // Minimalist ceramic pedestal with ikebana floral branch in far corner (non-intrusive)
+        const plinth = new T.Mesh(new T.CylinderGeometry(0.24, 0.28, 0.75, 32), matte('#c8beb1', 0.5));
+        plinth.position.set(3.8, 0.375, 2.2);
+        group.add(plinth);
+        const vase = new T.Mesh(new T.CylinderGeometry(0.1, 0.14, 0.35, 24), matte('#8e8476', 0.4));
+        vase.position.set(3.8, 0.92, 2.2);
+        group.add(vase);
+        const branchMat = matte('#504236', 0.6);
+        rod(group, V(3.8, 1.05, 2.2), V(3.95, 1.6, 2.1), 0.008, branchMat);
+        rod(group, V(3.9, 1.3, 2.15), V(3.65, 1.52, 2.25), 0.006, branchMat);
+
       } else {
+        // --- 3. MIDNIGHT (Đêm giữa trời sao, bục trang trọng, núi đồi cây cối) ---
+        // Raised solemn obsidian / dark marble podium for piano and bench
+        const nightPodium = box(group, [5.6, 0.08, 4.6], [0, 0.04, -0.2], matte('#0e1520', 0.22, 0.15), 0.025);
+        nightPodium.name = 'Midnight solemn podium';
+        // Brushed silver-platinum trim
+        box(group, [5.72, 0.02, 4.72], [0, 0.01, -0.2], matte('#728a9e', 0.3, 0.5));
+
+        // Calm nocturnal lake beyond terrace
         const water = new T.Mesh(
-          new T.PlaneGeometry(140, 140, 100, 100),
+          new T.PlaneGeometry(160, 160, 80, 80),
           new T.MeshPhysicalMaterial({
-            color: '#182e41',
-            roughness: 0.38,
-            metalness: 0.2,
-            envMapIntensity: 0.2,
+            color: '#091522',
+            roughness: 0.2,
+            metalness: 0.3,
+            envMapIntensity: 0.4,
           }),
         );
         water.rotation.x = -Math.PI / 2;
-        const waterVertices=water.geometry.attributes.position;
-        for(let i=0;i<waterVertices.count;i++) {
-          const x=waterVertices.getX(i),y=waterVertices.getY(i);
-          waterVertices.setZ(i,.018*Math.sin(x*1.6+y*.7)+.009*Math.cos(y*2.2-x*.8));
-        }
-        water.geometry.computeVertexNormals();
         water.position.set(0, -0.3, 38);
         group.add(water);
-        const railing = matte('#6e7c7e', 0.28, 0.8);
-        for (let x = -12; x <= 12; x += 1.8)
-          rod(group, V(x, 0, 4.8), V(x, 0.86, 4.8), 0.013, railing);
-        rod(group, V(-14, 0.86, 4.8), V(14, 0.86, 4.8), 0.018, railing);
+
+        // Glowing moon
         const moon = new T.Mesh(
-          new T.SphereGeometry(0.63, 40, 24),
-          new T.MeshBasicMaterial({ color: '#e1e5df' }),
+          new T.SphereGeometry(0.82, 40, 24),
+          new T.MeshBasicMaterial({ color: '#f2f6ff' }),
         );
-        moon.position.set(-6, 0.8, 8);
+        moon.position.set(-6.5, 2.2, 11);
         group.add(moon);
-        let seed = 19;
+        const moonHalo = new T.Mesh(
+          new T.SphereGeometry(1.2, 32, 16),
+          new T.MeshBasicMaterial({ color: '#d8e7ff', transparent: true, opacity: 0.12, side: T.BackSide }),
+        );
+        moonHalo.position.copy(moon.position);
+        group.add(moonHalo);
+
+        // Starfield in midnight sky (850 twinkling stars)
+        let seed = 37;
         const rnd = () => {
           seed = (seed * 1664525 + 1013904223) >>> 0;
           return seed / 4294967296;
         };
         const stars = [];
-        for (let i = 0; i < 450; i++)
-          stars.push((rnd() - 0.5) * 80, 8 + rnd() * 25, (rnd() - 0.5) * 80);
+        for (let i = 0; i < 850; i++)
+          stars.push((rnd() - 0.5) * 110, 5 + rnd() * 35, (rnd() - 0.5) * 110);
         const geo = new T.BufferGeometry();
         geo.setAttribute('position', new T.Float32BufferAttribute(stars, 3));
         group.add(
           new T.Points(
             geo,
             new T.PointsMaterial({
-              color: '#e3e5ef',
-              size: 0.043,
+              color: '#dbe7f7',
+              size: 0.048,
               sizeAttenuation: true,
               transparent: true,
-              opacity: 0.7,
+              opacity: 0.88,
             }),
           ),
         );
-        const mountainMat = matte('#132330');
-        const terrain=new T.PlaneGeometry(100,30,160,32);
-        terrain.rotateX(-Math.PI/2);
-        const terrainVertices=terrain.attributes.position;
-        for(let i=0;i<terrainVertices.count;i++) {
-          const x=terrainVertices.getX(i),z=terrainVertices.getZ(i);
-          const envelope=Math.sin((z+15)/30*Math.PI);
-          const ridge=2.8+1.1*Math.sin(x*.28)+.65*Math.sin(x*.71+z*.22)+.3*Math.sin(x*1.63-z*.4);
-          terrainVertices.setY(i,Math.max(0,envelope*ridge)-.35);
+
+        // Mountain ridges (Núi đồi hùng vĩ)
+        const mountainMat = matte('#070e17', 0.85);
+        const terrain = new T.PlaneGeometry(120, 35, 180, 40);
+        terrain.rotateX(-Math.PI / 2);
+        const terrainVertices = terrain.attributes.position;
+        for (let i = 0; i < terrainVertices.count; i++) {
+          const x = terrainVertices.getX(i), z = terrainVertices.getZ(i);
+          const envelope = Math.sin(((z + 17.5) / 35) * Math.PI);
+          const ridge = 3.6 + 1.5 * Math.sin(x * 0.25) + 0.8 * Math.sin(x * 0.65 + z * 0.2) + 0.4 * Math.sin(x * 1.5 - z * 0.35);
+          terrainVertices.setY(i, Math.max(0, envelope * ridge) - 0.3);
         }
         terrain.computeVertexNormals();
-        const mountains=new T.Mesh(terrain,mountainMat);
-        mountains.position.z=35;
-        mountains.name='Continuous layered mountain ridge';
+        const mountains = new T.Mesh(terrain, mountainMat);
+        mountains.position.z = 38;
+        mountains.name = 'Continuous layered mountain ridge';
         group.add(mountains);
-        const lantern = new T.MeshBasicMaterial({ color: '#e2b96d' });
-        for (const x of [-2.6, 2.6]) {
-          box(group, [0.11, 0.19, 0.11], [x, 0.12, 2.4], lantern, 0.01);
-          const p = new T.PointLight('#ebba6a', 2, 3);
-          p.position.set(x, 0.28, 2.4);
+
+        // Pine trees framing the flanks (Cây cối bao quanh)
+        const pineFoliage = matte('#0e2118', 0.9);
+        const pineTrunk = matte('#241c15', 0.9);
+        for (const [px, pz, scale] of [
+          [-6.2, 2.0, 1.25], [-7.4, 3.4, 1.55], [-8.0, 1.5, 1.05], [-8.8, 4.0, 1.65],
+          [6.2, 2.0, 1.15], [7.4, 3.4, 1.45], [8.0, 1.6, 1.25], [8.8, 3.8, 1.75],
+          [-4.8, 4.6, 1.35], [4.8, 4.6, 1.35]
+        ]) {
+          box(group, [0.08 * scale, 0.8 * scale, 0.08 * scale], [px, 0.4 * scale, pz], pineTrunk);
+          for (let l = 0; l < 3; l++) {
+            const cone = new T.Mesh(
+              new T.ConeGeometry((0.55 - l * 0.12) * scale, (0.75 - l * 0.1) * scale, 7),
+              pineFoliage,
+            );
+            cone.position.set(px, (0.7 + l * 0.45) * scale, pz);
+            group.add(cone);
+          }
+        }
+
+        // Warm ground lanterns beside terrace dais
+        const lanternMat = new T.MeshBasicMaterial({ color: '#f3c273' });
+        for (const x of [-2.9, 2.9]) {
+          box(group, [0.12, 0.2, 0.12], [x, 0.14, 2.2], lanternMat, 0.01);
+          const p = new T.PointLight('#f0be6e', 2.5, 4.0);
+          p.position.set(x, 0.3, 2.2);
           group.add(p);
         }
       }
-      buildRoomDetail(group, index);
     }
   }
+
   setEnvironment(index: number) {
     this.environments.forEach((g, i) => (g.visible = i === index));
-    const backgrounds = ['#1d241d', '#788781', '#091a2a'];
+    const backgrounds = ['#0c0f0d', '#ece5db', '#040914'];
     this.scene.background = new T.Color(backgrounds[index]);
     this.scene.fog = new T.FogExp2(
       backgrounds[index],
-      index === 1 ? 0.025 : 0.045,
+      index === 1 ? 0.022 : index === 0 ? 0.038 : 0.032,
     );
-    this.light.color.set(['#ffdfac', '#fff2dd', '#b9d5ff'][index]);
-    this.light.intensity = [2.4, 4.2, 2.8][index];
+    this.light.color.set(['#ffdfaa', '#fff6e4', '#c2dcff'][index]);
+    this.light.intensity = [2.9, 4.2, 2.6][index];
     this.light.position.set(
       ...([
-        [-3, 6, -2],
-        [3, 7, 3],
-        [-4, 6, 2],
+        [-3.2, 6.5, -2],
+        [3.5, 7.2, 3],
+        [-4.5, 5.8, 3],
       ][index] as [number, number, number]),
     );
-    this.fill.color.set(['#e1e6dc', '#dfefff', '#d4dfff'][index]);
-    this.fill.intensity = [1.7, 2.2, 2.2][index];
-    this.ambient.intensity = [0.7, 1.8, 0.7][index];
-    this.scene.environmentIntensity = [0.8, 0.86, 0.7][index];
-    this.renderer.toneMappingExposure = [0.9, 1.05, 1.08][index];
+    this.fill.color.set(['#e6e0d2', '#e2efff', '#cad8f5'][index]);
+    this.fill.intensity = [1.8, 2.4, 2.0][index];
+    this.ambient.intensity = [0.85, 2.0, 0.75][index];
+    this.scene.environmentIntensity = [0.85, 0.9, 0.72][index];
+    this.renderer.toneMappingExposure = [0.95, 1.05, 1.05][index];
   }
   setView(view: View) {
     this.view = view;
