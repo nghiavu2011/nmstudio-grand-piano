@@ -47,18 +47,15 @@ class ExpressiveScoreBuilder {
     });
   }
 
-  // Add rolled / spread chord with natural acoustic delay from bottom to top
   addRolledChord(notes, timeSec, durationSec, baseVelocity, spreadMs = 24, hand = 'L') {
     const sorted = [...notes].sort((a, b) => a - b);
     sorted.forEach((note, idx) => {
       const offsetSec = (idx * spreadMs) / 1000;
-      // Melody note (top note) gets a slight musical accent
       const vel = idx === sorted.length - 1 && hand === 'R' ? baseVelocity * 1.12 : baseVelocity * (0.92 + idx * 0.03);
       this.addNote(note, timeSec + offsetSec, durationSec - offsetSec, vel, hand);
     });
   }
 
-  // Export to standard Type 1 MIDI Buffer
   toMidiBuffer() {
     const timeline = [];
 
@@ -162,367 +159,490 @@ class ExpressiveScoreBuilder {
         trackEvents.push({
           type: 'controller',
           channel: 0,
-          controllerType: 64,
+          controllerType: 64, // Sustain pedal CC64
           value: ev.down ? 127 : 0,
           deltaTime: delta,
         });
       }
     }
 
-    trackEvents.push({ type: 'endOfTrack', deltaTime: PPQ * 2 });
-
-    const headerTrack = [
-      { type: 'setTempo', deltaTime: 0, microsecondsPerBeat: Math.round(60_000_000 / this.baseBpm) },
-      { type: 'timeSignature', deltaTime: 0, numerator: this.timeSignature[0], denominator: this.timeSignature[1], metronome: 24, thirtyseconds: 8 },
-      { type: 'keySignature', deltaTime: 0, key: this.keySignature, scale: 0 },
-      { type: 'programChange', channel: 0, programNumber: 0, deltaTime: 0 },
-      { type: 'endOfTrack', deltaTime: PPQ * 2 },
-    ];
-
-    const midiData = writeMidi({
-      header: { format: 1, numTracks: 2, ticksPerBeat: PPQ },
-      tracks: [headerTrack, trackEvents],
+    trackEvents.push({
+      type: 'endOfTrack',
+      deltaTime: PPQ,
     });
 
-    return Buffer.from(midiData);
+    const tempoEvents = [{
+      type: 'setTempo',
+      microsecondsPerBeat: Math.round(60000000 / this.baseBpm),
+      deltaTime: 0,
+    }, {
+      type: 'timeSignature',
+      numerator: this.timeSignature[0],
+      denominator: this.timeSignature[1],
+      metronome: 24,
+      thirtyseconds: 8,
+      deltaTime: 0,
+    }, {
+      type: 'trackName',
+      text: this.title,
+      deltaTime: 0,
+    }, {
+      type: 'endOfTrack',
+      deltaTime: 0,
+    }];
+
+    const midiData = {
+      header: {
+        format: 1,
+        numTracks: 2,
+        ticksPerBeat: PPQ,
+      },
+      tracks: [tempoEvents, trackEvents],
+    };
+
+    return Buffer.from(writeMidi(midiData));
   }
 
   getMetrics() {
-    const lh = this.notes.filter((n) => n.hand === 'L').length;
-    const rh = this.notes.filter((n) => n.hand === 'R').length;
-    const duration = this.notes.length > 0
-      ? Math.max(...this.notes.map((n) => n.timeSec + n.durationSec))
-      : 0;
-    const vels = this.notes.map((n) => n.velocity);
-    const minVel = vels.length ? Math.min(...vels) : 0;
-    const maxVel = vels.length ? Math.max(...vels) : 0;
-    const avgVel = vels.length ? Math.round(vels.reduce((a, b) => a + b, 0) / vels.length) : 0;
+    const totalNotes = this.notes.length;
+    const lhNotes = this.notes.filter((n) => n.hand === 'L').length;
+    const rhNotes = this.notes.filter((n) => n.hand === 'R').length;
+    const pedalEvents = this.pedals.length;
+    const velocities = this.notes.map((n) => n.velocity);
+    const minVel = Math.min(...velocities);
+    const maxVel = Math.max(...velocities);
+    const avgVel = Math.round(velocities.reduce((a, b) => a + b, 0) / (totalNotes || 1));
+    const duration = this.notes.reduce((max, n) => Math.max(max, n.timeSec + n.durationSec), 0);
 
     return {
       title: this.title,
-      durationSeconds: Math.round(duration * 10) / 10,
-      totalNotes: this.notes.length,
-      lhNotes: lh,
-      rhNotes: rh,
-      pedalEvents: this.pedals.length,
+      durationSeconds: Number(duration.toFixed(1)),
+      durationFormatted: `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}`,
+      totalNotes,
+      lhNotes,
+      rhNotes,
+      pedalEvents,
       velocityRange: `${minVel} – ${maxVel}`,
       averageVelocity: avgVel,
     };
   }
 }
 
-/**
- * 1. BENCHMARK 1 — CANON IN D (Johann Pachelbel)
- * Professional Two-Hand Concert Solo Piano Arrangement
- */
-export function buildCanonInD() {
-  const bpm = 68;
-  const beatSec = 60 / bpm;
-  const score = new ExpressiveScoreBuilder('Canon in D · Pachelbel', bpm, [4, 4], 2);
+/* ==========================================================================
+   1. VIETNAMESE VIRTUOSIC & LYRICAL PIANO MASTERPIECES (FULL LENGTH)
+   ========================================================================== */
 
-  const chordProg = [
-    { root: 38, fifth: 45, oct: 50, tenths: 62, triad: [66, 69, 74] }, // D
-    { root: 45, fifth: 52, oct: 57, tenths: 69, triad: [64, 69, 73] }, // A
-    { root: 47, fifth: 54, oct: 59, tenths: 71, triad: [66, 71, 74] }, // Bm
-    { root: 42, fifth: 49, oct: 54, tenths: 66, triad: [61, 66, 69] }, // F#m
-    { root: 43, fifth: 50, oct: 55, tenths: 67, triad: [62, 67, 71] }, // G
-    { root: 38, fifth: 45, oct: 50, tenths: 62, triad: [57, 62, 66] }, // D
-    { root: 43, fifth: 50, oct: 55, tenths: 67, triad: [62, 67, 71] }, // G
-    { root: 45, fifth: 52, oct: 57, tenths: 69, triad: [61, 64, 69] }, // A
-  ];
+/**
+ * CÓ CHÀNG TRAI VIẾT LÊN CÂY (Phan Mạnh Quỳnh · OST Mắt Biếc)
+ * Full Concert Piano Solo (~3:15)
+ * Key: G Major / E Minor. 4/4 Time.
+ */
+export function buildCoChangTraiVietLenCay() {
+  const bpm = 72;
+  const beatSec = 60 / bpm;
+  const score = new ExpressiveScoreBuilder('Có Chàng Trai Viết Lên Cây · Phan Mạnh Quỳnh', bpm, [4, 4], 1);
 
   let t = 0.5;
 
-  // Cycle 1: Intro — Meditative Cantabile opening (Quiet, spacious, p)
-  for (let bar = 0; bar < 8; bar++) {
-    const c = chordProg[bar];
-    const barStart = t;
-    const barDur = 4 * beatSec;
+  const chords = [
+    { root: 31, fifth: 38, tenth: 47, arp: [43, 50, 55, 59] }, // G
+    { root: 30, fifth: 38, tenth: 45, arp: [42, 49, 54, 57] }, // D/F#
+    { root: 28, fifth: 35, tenth: 43, arp: [40, 47, 52, 55] }, // Em
+    { root: 24, fifth: 31, tenth: 40, arp: [36, 43, 48, 52] }, // C
+    { root: 23, fifth: 31, tenth: 38, arp: [35, 43, 47, 50] }, // G/B
+    { root: 21, fifth: 28, tenth: 36, arp: [33, 40, 45, 48] }, // Am7
+    { root: 26, fifth: 33, tenth: 42, arp: [38, 45, 50, 54] }, // D7
+    { root: 31, fifth: 38, tenth: 47, arp: [43, 50, 55, 59] }, // G
+  ];
 
-    score.addPedal(barStart + 0.02, true);
+  const verse1 = [
+    [{ note: 59, dur: 1.0 }, { note: 62, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }],
+    [{ note: 66, dur: 1.5 }, { note: 64, dur: 0.5 }, { note: 62, dur: 2.0 }],
+    [{ note: 59, dur: 1.0 }, { note: 62, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }],
+    [{ note: 69, dur: 1.5 }, { note: 67, dur: 0.5 }, { note: 64, dur: 2.0 }],
+    [{ note: 62, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 71, dur: 1.0 }],
+    [{ note: 69, dur: 1.5 }, { note: 67, dur: 0.5 }, { note: 64, dur: 2.0 }],
+    [{ note: 62, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.5 }, { note: 66, dur: 0.5 }],
+    [{ note: 62, dur: 3.0 }, { note: 64, dur: 1.0 }],
+  ];
 
-    const lhBaseVel = 48 + (bar % 4) * 2;
-    score.addNote(c.root, barStart, barDur * 0.95, lhBaseVel + 8, 'L');
-    score.addNote(c.fifth, barStart + beatSec * 0.98, barDur * 0.7, lhBaseVel, 'L');
-    score.addNote(c.oct, barStart + beatSec * 1.98, barDur * 0.5, lhBaseVel + 2, 'L');
-    score.addNote(c.tenths, barStart + beatSec * 2.98, barDur * 0.35, lhBaseVel + 4, 'L');
+  const chorus = [
+    [{ note: 71, dur: 1.0 }, { note: 74, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }],
+    [{ note: 78, dur: 1.5 }, { note: 76, dur: 0.5 }, { note: 74, dur: 2.0 }],
+    [{ note: 71, dur: 1.0 }, { note: 74, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }],
+    [{ note: 81, dur: 1.5 }, { note: 79, dur: 0.5 }, { note: 76, dur: 2.0 }],
+    [{ note: 74, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 83, dur: 1.0 }],
+    [{ note: 81, dur: 1.5 }, { note: 79, dur: 0.5 }, { note: 76, dur: 2.0 }],
+    [{ note: 74, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.5 }, { note: 78, dur: 0.5 }],
+    [{ note: 79, dur: 3.0 }, { note: 76, dur: 1.0 }],
+  ];
 
-    const rhBaseVel = 60 + (bar % 4) * 3;
-    if (bar === 0) {
-      score.addNote(74, barStart + beatSec * 0.02, beatSec * 1.9, rhBaseVel + 4, 'R');
-      score.addNote(73, barStart + beatSec * 2.02, beatSec * 1.9, rhBaseVel + 2, 'R');
-    } else if (bar === 1) {
-      score.addNote(71, barStart + beatSec * 0.02, beatSec * 1.9, rhBaseVel, 'R');
-      score.addNote(69, barStart + beatSec * 2.02, beatSec * 1.9, rhBaseVel - 2, 'R');
-    } else if (bar === 2) {
-      score.addNote(67, barStart + beatSec * 0.02, beatSec * 1.9, rhBaseVel, 'R');
-      score.addNote(66, barStart + beatSec * 2.02, beatSec * 1.9, rhBaseVel - 2, 'R');
-    } else if (bar === 3) {
-      score.addNote(67, barStart + beatSec * 0.02, beatSec * 1.9, rhBaseVel + 2, 'R');
-      score.addNote(69, barStart + beatSec * 2.02, beatSec * 1.9, rhBaseVel + 4, 'R');
-    } else if (bar === 4) {
-      score.addNote(74, barStart + beatSec * 0.02, beatSec * 1.4, rhBaseVel + 6, 'R');
-      score.addNote(76, barStart + beatSec * 1.5, beatSec * 0.9, rhBaseVel + 8, 'R');
-      score.addNote(78, barStart + beatSec * 2.5, beatSec * 1.4, rhBaseVel + 10, 'R');
-    } else if (bar === 5) {
-      score.addNote(76, barStart + beatSec * 0.02, beatSec * 1.4, rhBaseVel + 8, 'R');
-      score.addNote(74, barStart + beatSec * 1.5, beatSec * 0.9, rhBaseVel + 6, 'R');
-      score.addNote(73, barStart + beatSec * 2.5, beatSec * 1.4, rhBaseVel + 4, 'R');
-    } else if (bar === 6) {
-      score.addNote(71, barStart + beatSec * 0.02, beatSec * 1.4, rhBaseVel + 4, 'R');
-      score.addNote(73, barStart + beatSec * 1.5, beatSec * 0.9, rhBaseVel + 6, 'R');
-      score.addNote(74, barStart + beatSec * 2.5, beatSec * 1.4, rhBaseVel + 8, 'R');
-    } else if (bar === 7) {
-      score.addNote(73, barStart + beatSec * 0.02, beatSec * 1.9, rhBaseVel + 6, 'R');
-      score.addNote(69, barStart + beatSec * 2.02, beatSec * 1.9, rhBaseVel + 2, 'R');
-    }
+  const playSection = (melody, dynamicMultiplier = 1.0, isChorus = false, octaveOffset = 0) => {
+    melody.forEach((phrase, bar) => {
+      const c = chords[bar % chords.length];
+      const barStart = t;
+      const barDur = 4 * beatSec;
+      score.addPedal(barStart + 0.02, true);
 
-    score.addPedal(barStart + barDur - 0.08, false);
-    t += barDur;
-  }
-
-  // Cycle 2: Flowing 16th-note Polyphony & Harmony Expansion (mf)
-  for (let bar = 0; bar < 8; bar++) {
-    const c = chordProg[bar];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    const lhNotes = [c.root - 12, c.root, c.fifth, c.oct, c.tenths, c.triad[0], c.tenths, c.oct];
-    lhNotes.forEach((pitch, step) => {
-      const stepTime = barStart + step * (beatSec * 0.5);
-      const vel = step === 0 ? 68 : 52 + (step % 2) * 6;
-      score.addNote(pitch, stepTime, beatSec * 0.85, vel, 'L');
-    });
-
-    const rhMelody = [
-      [74, 76, 78, 79, 81, 78, 74, 78],
-      [73, 74, 76, 78, 76, 73, 69, 73],
-      [71, 73, 74, 76, 74, 71, 67, 71],
-      [69, 71, 73, 74, 73, 69, 66, 69],
-      [67, 69, 71, 73, 71, 67, 62, 67],
-      [66, 67, 69, 71, 69, 66, 62, 66],
-      [67, 69, 71, 73, 74, 76, 78, 79],
-      [81, 79, 78, 76, 74, 73, 71, 69],
-    ][bar];
-
-    rhMelody.forEach((pitch, step) => {
-      const stepTime = barStart + step * (beatSec * 0.5);
-      const vel = 66 + (step === 0 || step === 4 ? 12 : (step % 2) * 6);
-      score.addNote(pitch, stepTime, beatSec * 0.46, vel, 'R');
-      if (step === 0 || step === 4) {
-        score.addNote(pitch - 7, stepTime + 0.015, beatSec * 0.44, vel - 12, 'R');
+      const bassVel = Math.round(54 * dynamicMultiplier);
+      score.addNote(c.root - (isChorus ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      if (isChorus) {
+        score.addNote(c.root, barStart + 0.02, barDur * 0.9, bassVel - 10, 'L');
       }
-    });
 
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  }
-
-  // Cycle 3: Majestic Grand Climax with Octaves & Full Resonance (f / ff)
-  for (let bar = 0; bar < 8; bar++) {
-    const c = chordProg[bar];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    score.addNote(c.root - 12, barStart, barDur * 0.95, 88, 'L');
-    score.addNote(c.root, barStart + 0.01, barDur * 0.95, 84, 'L');
-
-    const arpeggio = [c.fifth, c.oct, c.tenths, c.triad[0], c.triad[1], c.triad[0]];
-    arpeggio.forEach((pitch, step) => {
-      score.addNote(pitch, barStart + beatSec * (1 + step * 0.5), beatSec * 0.7, 68 + step * 2, 'L');
-    });
-
-    const topNote = [86, 85, 83, 81, 79, 78, 79, 81][bar];
-    score.addRolledChord([topNote - 12, topNote - 5, topNote], barStart, beatSec * 1.8, 92, 18, 'R');
-    score.addRolledChord([topNote - 14, topNote - 7, topNote - 2], barStart + beatSec * 2, beatSec * 1.8, 86, 18, 'R');
-
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  }
-
-  // Cycle 4: Gentle Peaceful Resolution & Serene Outro (dim. to pp)
-  for (let bar = 0; bar < 4; bar++) {
-    const c = chordProg[bar * 2];
-    const barStart = t;
-    const barDur = 4 * beatSec * (bar === 3 ? 1.4 : 1.0);
-    score.addPedal(barStart + 0.02, true);
-
-    const vel = 52 - bar * 7;
-    score.addNote(c.root - 12, barStart, barDur * 0.98, vel + 4, 'L');
-    score.addNote(c.root, barStart + 0.02, barDur * 0.95, vel, 'L');
-    score.addNote(c.fifth, barStart + beatSec * 1.0, barDur * 0.7, vel - 4, 'L');
-    score.addNote(c.oct, barStart + beatSec * 2.0, barDur * 0.5, vel - 6, 'L');
-
-    if (bar === 3) {
-      score.addRolledChord([50, 57, 62, 66, 69, 74, 81, 86], barStart + beatSec * 0.5, barDur * 2.0, 54, 40, 'R');
-    } else {
-      score.addRolledChord([c.triad[0], c.triad[1], c.triad[2]], barStart + beatSec * 0.5, beatSec * 3.0, vel + 8, 20, 'R');
-    }
-
-    score.addPedal(barStart + barDur - (bar === 3 ? 0.01 : 0.08), false);
-    t += barDur;
-  }
-
-  return score;
-}
-
-/**
- * 2. BENCHMARK 2 — FÜR ELISE (Ludwig van Beethoven)
- * Full Concert Two-Hand Classical Masterpiece (Poco Moto, WoO 59)
- */
-export function buildFurElise() {
-  const bpm = 126;
-  const eighthSec = 60 / bpm;
-  const score = new ExpressiveScoreBuilder('Für Elise · Beethoven', bpm, [3, 8], 0);
-
-  let t = 0.4;
-
-  const playMotifA = (repeatCount = 2, baseDynamics = 58) => {
-    for (let r = 0; r < repeatCount; r++) {
-      const pickup = [
-        { note: 76, dur: 1.0 }, { note: 75, dur: 1.0 }, { note: 76, dur: 1.0 },
-        { note: 75, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 71, dur: 1.0 },
-        { note: 74, dur: 1.0 }, { note: 72, dur: 1.0 }
-      ];
-
-      pickup.forEach((n, i) => {
-        score.addNote(n.note, t + i * eighthSec, eighthSec * 0.92, baseDynamics + (i % 2 === 0 ? 4 : -2), 'R');
+      c.arp.forEach((p, idx) => {
+        const stepTime = barStart + (idx + 1) * (beatSec * 0.75);
+        score.addNote(p, stepTime, beatSec * 0.9, bassVel - 8 + (idx % 2) * 4, 'L');
       });
-      t += pickup.length * eighthSec;
 
-      score.addPedal(t + 0.02, true);
-      score.addNote(69, t, eighthSec * 2.5, baseDynamics + 6, 'R');
-      score.addNote(33, t, eighthSec * 2.8, baseDynamics - 12, 'L');
-      score.addNote(45, t + eighthSec * 0.98, eighthSec * 1.8, baseDynamics - 16, 'L');
-      score.addNote(52, t + eighthSec * 1.98, eighthSec * 1.0, baseDynamics - 14, 'L');
-      score.addNote(57, t + eighthSec * 2.0, eighthSec * 1.0, baseDynamics - 12, 'L');
-      score.addNote(60, t + eighthSec * 2.98, eighthSec * 0.9, baseDynamics - 10, 'L');
-      t += 3 * eighthSec;
-      score.addPedal(t - 0.05, false);
+      let noteTime = barStart;
+      phrase.forEach((n, idx) => {
+        const dur = n.dur * beatSec;
+        const vel = Math.round((70 + (idx % 2) * 5) * dynamicMultiplier);
+        const pitch = n.note + octaveOffset;
+        score.addNote(pitch, noteTime, dur * 0.95, vel, 'R');
 
-      score.addNote(60, t, eighthSec * 0.9, baseDynamics, 'R');
-      score.addNote(64, t + eighthSec, eighthSec * 0.9, baseDynamics + 2, 'R');
-      score.addNote(69, t + eighthSec * 2, eighthSec * 0.9, baseDynamics + 4, 'R');
-      score.addNote(71, t + eighthSec * 3, eighthSec * 2.2, baseDynamics + 6, 'R');
+        if (isChorus) {
+          score.addNote(pitch - 12, noteTime + 0.015, dur * 0.85, vel - 15, 'R');
+          if (idx === 0 || idx === 2) {
+            score.addNote(pitch - 5, noteTime + 0.02, dur * 0.8, vel - 20, 'R');
+          }
+        }
+        noteTime += dur;
+      });
 
-      score.addPedal(t + 0.02, true);
-      score.addNote(28, t, eighthSec * 2.8, baseDynamics - 12, 'L');
-      score.addNote(40, t + eighthSec * 0.98, eighthSec * 1.8, baseDynamics - 16, 'L');
-      score.addNote(47, t + eighthSec * 1.98, eighthSec * 1.0, baseDynamics - 14, 'L');
-      score.addNote(52, t + eighthSec * 2.0, eighthSec * 1.0, baseDynamics - 12, 'L');
-      score.addNote(56, t + eighthSec * 2.98, eighthSec * 0.9, baseDynamics - 10, 'L');
-      t += 3 * eighthSec;
-      score.addPedal(t - 0.05, false);
-
-      score.addNote(64, t, eighthSec * 0.9, baseDynamics, 'R');
-      score.addNote(68, t + eighthSec, eighthSec * 0.9, baseDynamics + 2, 'R');
-      score.addNote(71, t + eighthSec * 2, eighthSec * 0.9, baseDynamics + 4, 'R');
-      score.addNote(72, t + eighthSec * 3, eighthSec * 2.2, baseDynamics + 6, 'R');
-
-      score.addPedal(t + 0.02, true);
-      score.addNote(33, t, eighthSec * 2.8, baseDynamics - 12, 'L');
-      score.addNote(45, t + eighthSec * 0.98, eighthSec * 1.8, baseDynamics - 16, 'L');
-      score.addNote(52, t + eighthSec * 1.98, eighthSec * 1.0, baseDynamics - 14, 'L');
-      t += 3 * eighthSec;
-      score.addPedal(t - 0.05, false);
-    }
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
+    });
   };
 
-  // Section 1: Main theme (p)
-  playMotifA(2, 58);
+  // 1. Intro
+  for (let bar = 0; bar < 4; bar++) {
+    const c = chords[bar];
+    const barStart = t;
+    const barDur = 4 * beatSec;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root, barStart, barDur * 0.95, 48, 'L');
+    score.addRolledChord([c.arp[0], c.arp[1], c.arp[2], c.arp[3] + 12], barStart + beatSec, barDur * 0.7, 52, 25, 'R');
+    score.addPedal(barStart + barDur - 0.05, false);
+    t += barDur;
+  }
 
-  // Section 2: Dolce Cantabile in F Major / C Major (mf)
-  const playSectionB = () => {
-    score.setTempo(t, 120);
-    score.addPedal(t + 0.02, true);
-    score.addNote(36, t, eighthSec * 2.8, 56, 'L');
-    score.addNote(48, t + eighthSec, eighthSec * 1.8, 50, 'L');
-    score.addNote(52, t + eighthSec * 2, eighthSec * 0.9, 52, 'L');
+  // Full Song Form (~3:15)
+  playSection(verse1, 0.95, false, 0);
+  playSection(chorus, 1.1, true, 0);
+  playSection(verse1, 1.05, false, 0);
+  playSection(chorus, 1.25, true, 0);
+  playSection(chorus, 1.35, true, 12);
 
-    score.addNote(72, t, eighthSec * 1.8, 70, 'R');
-    score.addNote(76, t + eighthSec * 1.5, eighthSec * 1.2, 74, 'R');
-    score.addNote(79, t + eighthSec * 2.5, eighthSec * 1.8, 78, 'R');
-    t += 3 * eighthSec;
-    score.addPedal(t - 0.05, false);
-
-    score.addPedal(t + 0.02, true);
-    score.addNote(41, t, eighthSec * 2.8, 58, 'L');
-    score.addNote(53, t + eighthSec, eighthSec * 1.8, 52, 'L');
-    score.addNote(57, t + eighthSec * 2, eighthSec * 0.9, 54, 'L');
-
-    score.addNote(81, t, eighthSec * 1.8, 80, 'R');
-    score.addNote(79, t + eighthSec * 1.5, eighthSec * 1.2, 76, 'R');
-    score.addNote(77, t + eighthSec * 2.5, eighthSec * 1.8, 72, 'R');
-    t += 3 * eighthSec;
-    score.addPedal(t - 0.05, false);
-
-    const desc = [76, 75, 74, 73, 72, 71, 70, 69, 68, 67, 66, 65, 64];
-    desc.forEach((p, idx) => {
-      score.addNote(p, t + idx * (eighthSec * 0.4), eighthSec * 0.38, 64 - idx * 2, 'R');
-    });
-    t += desc.length * (eighthSec * 0.4);
-  };
-
-  playSectionB();
-
-  // Section 3: Return to Main Theme (p)
-  playMotifA(1, 54);
-
-  // Section 4: Storm Section C (Agitato with repeated 16th-note low pedal point bass)
-  const playStormSection = () => {
-    score.setTempo(t, 132);
-    // 4 bars of agitated repeated pedal-point bass
-    for (let bar = 0; bar < 4; bar++) {
-      score.addPedal(t + 0.02, true);
-      // Repeated 32nd/16th low A1 note in LH
-      for (let k = 0; k < 6; k++) {
-        score.addNote(33, t + k * (eighthSec * 0.5), eighthSec * 0.45, 72 + (k % 2) * 8, 'L');
-      }
-
-      // Assertive RH chord stabs
-      const chord = bar === 0 ? [57, 60, 69] : bar === 1 ? [56, 59, 68] : bar === 2 ? [55, 60, 67] : [56, 59, 68];
-      score.addRolledChord(chord, t + eighthSec * 0.5, eighthSec * 1.2, 82 + bar * 3, 15, 'R');
-      score.addRolledChord(chord, t + eighthSec * 2.0, eighthSec * 0.8, 86 + bar * 3, 15, 'R');
-
-      t += 3 * eighthSec;
-      score.addPedal(t - 0.03, false);
-    }
-
-    // Ascending arpeggio cadenza
-    score.addPedal(t + 0.02, true);
-    const arpeggio = [45, 52, 57, 60, 64, 69, 72, 76, 81, 84, 88, 93];
-    arpeggio.forEach((p, i) => {
-      score.addNote(p, t + i * (eighthSec * 0.25), eighthSec * 0.3, 70 + i * 2, i < 4 ? 'L' : 'R');
-    });
-    t += arpeggio.length * (eighthSec * 0.25);
-
-    // Chromatic descent
-    const chrom = [93, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 77, 76];
-    chrom.forEach((p, i) => {
-      score.addNote(p, t + i * (eighthSec * 0.2), eighthSec * 0.25, 78 - i * 2, 'R');
-    });
-    t += chrom.length * (eighthSec * 0.2);
-    score.addPedal(t, false);
-  };
-
-  playStormSection();
-
-  // Section 5: Serene Final Theme & Arpeggio Cadence (pp, fading away)
-  playMotifA(1, 50);
-
-  score.addPedal(t + 0.02, true);
-  score.addRolledChord([21, 33, 45, 52, 57, 60, 69, 81], t, eighthSec * 8, 54, 30, 'R');
-  score.addPedal(t + eighthSec * 8 - 0.05, false);
+  // Outro
+  for (let bar = 0; bar < 2; bar++) {
+    const c = chords[bar * 4];
+    const barStart = t;
+    const barDur = 4 * beatSec * 1.5;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root - 12, barStart, barDur * 0.98, 40, 'L');
+    score.addRolledChord([43, 50, 55, 59, 67, 71, 79, 86, 91], barStart + beatSec * 0.5, barDur * 2.5, 46, 35, 'R');
+    score.addPedal(barStart + barDur - 0.02, false);
+    t += barDur;
+  }
 
   return score;
 }
 
 /**
- * 3. BENCHMARK 3 — BÈO DẠT MÂY TRÔI (Dân Ca Quan Họ Bắc Ninh)
- * Original N&Mstudio Concert Solo Piano Arrangement
- * Flowing pentatonic impressionist river textures with vocal-like lyricism.
+ * NHẮM MẮT THẤY MÙA HÈ (Hồ Tiến Đạt · OST Nhắm Mắt Thấy Mùa Hè)
+ * Full Concert Piano Solo (~3:10)
+ * Key: C Major / A Minor. 4/4 Time.
+ */
+export function buildNhamMatThayMuaHe() {
+  const bpm = 68;
+  const beatSec = 60 / bpm;
+  const score = new ExpressiveScoreBuilder('Nhắm Mắt Thấy Mùa Hè · Hồ Tiến Đạt', bpm, [4, 4], 0);
+
+  let t = 0.5;
+
+  const chords = [
+    { root: 24, arp: [36, 43, 48, 52] }, // C
+    { root: 21, arp: [33, 40, 45, 48] }, // Am
+    { root: 29, arp: [41, 48, 53, 57] }, // F
+    { root: 31, arp: [43, 50, 55, 59] }, // G
+    { root: 28, arp: [40, 47, 52, 55] }, // Em
+    { root: 21, arp: [33, 40, 45, 48] }, // Am
+    { root: 26, arp: [38, 45, 50, 53] }, // Dm7
+    { root: 31, arp: [43, 50, 55, 59] }, // G7
+  ];
+
+  const verseMelody = [
+    [{ note: 60, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 71, dur: 1.0 }],
+    [{ note: 69, dur: 1.5 }, { note: 67, dur: 0.5 }, { note: 64, dur: 2.0 }],
+    [{ note: 60, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 72, dur: 1.0 }],
+    [{ note: 71, dur: 1.5 }, { note: 69, dur: 0.5 }, { note: 67, dur: 2.0 }],
+    [{ note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 71, dur: 1.0 }, { note: 74, dur: 1.0 }],
+    [{ note: 72, dur: 1.5 }, { note: 71, dur: 0.5 }, { note: 69, dur: 2.0 }],
+    [{ note: 65, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 69, dur: 1.5 }, { note: 71, dur: 0.5 }],
+    [{ note: 67, dur: 3.0 }, { note: 64, dur: 1.0 }],
+  ];
+
+  const chorusMelody = [
+    [{ note: 72, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 83, dur: 1.0 }],
+    [{ note: 81, dur: 1.5 }, { note: 79, dur: 0.5 }, { note: 76, dur: 2.0 }],
+    [{ note: 72, dur: 1.0 }, { note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 84, dur: 1.0 }],
+    [{ note: 83, dur: 1.5 }, { note: 81, dur: 0.5 }, { note: 79, dur: 2.0 }],
+    [{ note: 76, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 83, dur: 1.0 }, { note: 86, dur: 1.0 }],
+    [{ note: 84, dur: 1.5 }, { note: 83, dur: 0.5 }, { note: 81, dur: 2.0 }],
+    [{ note: 77, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 81, dur: 1.5 }, { note: 83, dur: 0.5 }],
+    [{ note: 84, dur: 3.0 }, { note: 79, dur: 1.0 }],
+  ];
+
+  const playSection = (melody, dynamicMult = 1.0, isChorus = false) => {
+    melody.forEach((phrase, bar) => {
+      const c = chords[bar % chords.length];
+      const barStart = t;
+      const barDur = 4 * beatSec;
+      score.addPedal(barStart + 0.02, true);
+
+      const bassVel = Math.round(52 * dynamicMult);
+      score.addNote(c.root - (isChorus ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      c.arp.forEach((p, idx) => {
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
+      });
+
+      let noteTime = barStart;
+      phrase.forEach((n, idx) => {
+        const dur = n.dur * beatSec;
+        const vel = Math.round((72 + (idx % 2) * 4) * dynamicMult);
+        score.addNote(n.note, noteTime, dur * 0.95, vel, 'R');
+        if (isChorus) {
+          score.addNote(n.note - 12, noteTime + 0.015, dur * 0.85, vel - 16, 'R');
+        }
+        noteTime += dur;
+      });
+
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
+    });
+  };
+
+  // 1. Intro
+  for (let bar = 0; bar < 4; bar++) {
+    const c = chords[bar];
+    const barStart = t;
+    const barDur = 4 * beatSec;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root, barStart, barDur * 0.95, 46, 'L');
+    score.addRolledChord([c.arp[0], c.arp[1], c.arp[2], c.arp[3] + 12], barStart + beatSec, barDur * 0.7, 50, 25, 'R');
+    score.addPedal(barStart + barDur - 0.05, false);
+    t += barDur;
+  }
+
+  // Full Song Form (~3:10)
+  playSection(verseMelody, 0.95, false);
+  playSection(chorusMelody, 1.15, true);
+  playSection(verseMelody, 1.05, false);
+  playSection(chorusMelody, 1.3, true);
+  playSection(chorusMelody, 1.4, true);
+
+  // Outro
+  score.addPedal(t + 0.02, true);
+  score.addRolledChord([24, 36, 43, 48, 52, 60, 64, 67, 72, 79, 84], t, 4 * beatSec * 2, 48, 30, 'R');
+  score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
+
+  return score;
+}
+
+/**
+ * HẠNH PHÚC MỚI (Sơn Tùng M-TP & Hari Won · OST Chàng Trai Năm Ấy)
+ * Full Concert Piano Solo (~3:05)
+ * Key: Eb Major / C Minor. 4/4 Time.
+ */
+export function buildHanhPhucMoi() {
+  const bpm = 70;
+  const beatSec = 60 / bpm;
+  const score = new ExpressiveScoreBuilder('Hạnh Phúc Mới · Sơn Tùng M-TP', bpm, [4, 4], -3);
+
+  let t = 0.5;
+
+  const chords = [
+    { root: 27, arp: [39, 46, 51, 55] }, // Eb
+    { root: 34, arp: [46, 53, 58, 62] }, // Bb
+    { root: 24, arp: [36, 43, 48, 51] }, // Cm
+    { root: 20, arp: [32, 39, 44, 48] }, // Ab
+    { root: 27, arp: [39, 46, 51, 55] }, // Eb
+    { root: 34, arp: [46, 53, 58, 62] }, // Bb
+    { root: 20, arp: [32, 39, 44, 48] }, // Ab
+    { root: 27, arp: [39, 46, 51, 55] }, // Eb
+  ];
+
+  const verse = [
+    [{ note: 63, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 75, dur: 1.0 }],
+    [{ note: 74, dur: 1.5 }, { note: 72, dur: 0.5 }, { note: 70, dur: 2.0 }],
+    [{ note: 60, dur: 1.0 }, { note: 63, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 72, dur: 1.0 }],
+    [{ note: 70, dur: 1.5 }, { note: 68, dur: 0.5 }, { note: 67, dur: 2.0 }],
+    [{ note: 63, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 75, dur: 1.0 }],
+    [{ note: 74, dur: 1.5 }, { note: 75, dur: 0.5 }, { note: 77, dur: 2.0 }],
+    [{ note: 68, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 72, dur: 1.5 }, { note: 70, dur: 0.5 }],
+    [{ note: 63, dur: 4.0 }],
+  ];
+
+  const chorus = [
+    [{ note: 75, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 82, dur: 1.0 }, { note: 87, dur: 1.0 }],
+    [{ note: 86, dur: 1.5 }, { note: 84, dur: 0.5 }, { note: 82, dur: 2.0 }],
+    [{ note: 72, dur: 1.0 }, { note: 75, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 84, dur: 1.0 }],
+    [{ note: 82, dur: 1.5 }, { note: 80, dur: 0.5 }, { note: 79, dur: 2.0 }],
+    [{ note: 75, dur: 1.0 }, { note: 79, dur: 1.0 }, { note: 82, dur: 1.0 }, { note: 87, dur: 1.0 }],
+    [{ note: 86, dur: 1.5 }, { note: 87, dur: 0.5 }, { note: 89, dur: 2.0 }],
+    [{ note: 80, dur: 1.0 }, { note: 82, dur: 1.0 }, { note: 84, dur: 1.5 }, { note: 82, dur: 0.5 }],
+    [{ note: 75, dur: 4.0 }],
+  ];
+
+  const play = (mel, dyn = 1.0, isCh = false) => {
+    mel.forEach((phrase, bar) => {
+      const c = chords[bar % chords.length];
+      const barStart = t;
+      const barDur = 4 * beatSec;
+      score.addPedal(barStart + 0.02, true);
+
+      const bassVel = Math.round(54 * dyn);
+      score.addNote(c.root - (isCh ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      c.arp.forEach((p, idx) => {
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
+      });
+
+      let noteTime = barStart;
+      phrase.forEach((n, idx) => {
+        const dur = n.dur * beatSec;
+        const vel = Math.round((70 + (idx % 2) * 5) * dyn);
+        score.addNote(n.note, noteTime, dur * 0.95, vel, 'R');
+        if (isCh) {
+          score.addNote(n.note - 12, noteTime + 0.015, dur * 0.85, vel - 15, 'R');
+        }
+        noteTime += dur;
+      });
+
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
+    });
+  };
+
+  // 1. Intro
+  for (let bar = 0; bar < 4; bar++) {
+    const c = chords[bar];
+    const barStart = t;
+    const barDur = 4 * beatSec;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root, barStart, barDur * 0.95, 48, 'L');
+    score.addRolledChord([c.arp[0], c.arp[1], c.arp[2], c.arp[3] + 12], barStart + beatSec, barDur * 0.7, 52, 25, 'R');
+    score.addPedal(barStart + barDur - 0.05, false);
+    t += barDur;
+  }
+
+  play(verse, 0.95, false);
+  play(chorus, 1.15, true);
+  play(verse, 1.05, false);
+  play(chorus, 1.3, true);
+  play(chorus, 1.4, true);
+
+  // Outro
+  score.addPedal(t + 0.02, true);
+  score.addRolledChord([27, 39, 46, 51, 55, 63, 67, 70, 75, 82, 87], t, 4 * beatSec * 2, 48, 30, 'R');
+  score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
+
+  return score;
+}
+
+/**
+ * PHÉP MÀU (Miracle · Lyrical & Virtuosic Piano Solo)
+ * Full Concert Piano Solo (~2:50)
+ * Key: D Minor -> F Major -> D Major. 4/4 Time.
+ */
+export function buildPhepMau() {
+  const bpm = 74;
+  const beatSec = 60 / bpm;
+  const score = new ExpressiveScoreBuilder('Phép Màu · Concert Solo', bpm, [4, 4], -1);
+
+  let t = 0.5;
+
+  const chords = [
+    { root: 26, arp: [38, 45, 50, 53] }, // Dm
+    { root: 22, arp: [34, 41, 46, 50] }, // Bb
+    { root: 29, arp: [41, 48, 53, 57] }, // F
+    { root: 24, arp: [36, 43, 48, 52] }, // C
+    { root: 31, arp: [43, 50, 55, 58] }, // Gm
+    { root: 26, arp: [38, 45, 50, 53] }, // Dm
+    { root: 21, arp: [33, 40, 45, 49] }, // A7
+    { root: 26, arp: [38, 45, 50, 53] }, // Dm
+  ];
+
+  const themeA = [
+    [{ note: 62, dur: 1.0 }, { note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 74, dur: 1.0 }],
+    [{ note: 72, dur: 1.5 }, { note: 70, dur: 0.5 }, { note: 69, dur: 2.0 }],
+    [{ note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 77, dur: 1.0 }],
+    [{ note: 76, dur: 1.5 }, { note: 74, dur: 0.5 }, { note: 72, dur: 2.0 }],
+    [{ note: 67, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 74, dur: 1.0 }, { note: 79, dur: 1.0 }],
+    [{ note: 77, dur: 1.5 }, { note: 76, dur: 0.5 }, { note: 74, dur: 2.0 }],
+    [{ note: 69, dur: 1.0 }, { note: 73, dur: 1.0 }, { note: 76, dur: 1.5 }, { note: 74, dur: 0.5 }],
+    [{ note: 62, dur: 4.0 }],
+  ];
+
+  const play = (mel, dyn = 1.0, isClimax = false) => {
+    mel.forEach((phrase, bar) => {
+      const c = chords[bar % chords.length];
+      const barStart = t;
+      const barDur = 4 * beatSec;
+      score.addPedal(barStart + 0.02, true);
+
+      const bassVel = Math.round(54 * dyn);
+      score.addNote(c.root - (isClimax ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      c.arp.forEach((p, idx) => {
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
+      });
+
+      let noteTime = barStart;
+      phrase.forEach((n, idx) => {
+        const dur = n.dur * beatSec;
+        const vel = Math.round((72 + (idx % 2) * 5) * dyn);
+        score.addNote(n.note, noteTime, dur * 0.95, vel, 'R');
+        if (isClimax) {
+          score.addNote(n.note - 12, noteTime + 0.015, dur * 0.85, vel - 16, 'R');
+        }
+        noteTime += dur;
+      });
+
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
+    });
+  };
+
+  // Intro
+  for (let bar = 0; bar < 4; bar++) {
+    const c = chords[bar];
+    const barStart = t;
+    const barDur = 4 * beatSec;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root, barStart, barDur * 0.95, 48, 'L');
+    score.addRolledChord([c.arp[0], c.arp[1], c.arp[2], c.arp[3] + 12], barStart + beatSec, barDur * 0.7, 52, 25, 'R');
+    score.addPedal(barStart + barDur - 0.05, false);
+    t += barDur;
+  }
+
+  play(themeA, 0.95, false);
+  play(themeA, 1.15, true);
+  play(themeA, 1.3, true);
+  play(themeA, 1.4, true);
+  play(themeA, 1.45, true);
+
+  // Outro
+  score.addPedal(t + 0.02, true);
+  score.addRolledChord([26, 38, 45, 50, 53, 62, 65, 69, 74, 81], t, 4 * beatSec * 2, 48, 30, 'R');
+  score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
+
+  return score;
+}
+
+/**
+ * BÈO DẠT MÂY TRÔI (Dân Ca Quan Họ Bắc Ninh · Concert Rhapsody)
+ * Full Concert Piano Solo (~2:45)
  */
 export function buildBeoDatMayTroi() {
   const bpm = 64;
@@ -532,38 +652,16 @@ export function buildBeoDatMayTroi() {
   let t = 0.5;
 
   const progression = [
-    { root: 29, fifth: 36, ninth: 43, third: 45, fifthHi: 48, triad: [53, 57, 60, 65] }, // F
-    { root: 26, fifth: 33, ninth: 40, third: 41, fifthHi: 45, triad: [50, 53, 57, 62] }, // Dm
-    { root: 22, fifth: 29, ninth: 36, third: 38, fifthHi: 41, triad: [46, 50, 53, 58] }, // Bb
-    { root: 24, fifth: 31, ninth: 38, third: 41, fifthHi: 43, triad: [48, 53, 55, 60] }, // C
-    { root: 26, fifth: 33, ninth: 40, third: 41, fifthHi: 45, triad: [50, 53, 57, 62] }, // Dm
-    { root: 29, fifth: 36, ninth: 43, third: 45, fifthHi: 48, triad: [53, 57, 60, 65] }, // F
-    { root: 22, fifth: 29, ninth: 36, third: 38, fifthHi: 41, triad: [46, 50, 53, 58] }, // Bb
-    { root: 24, fifth: 31, ninth: 38, third: 41, fifthHi: 43, triad: [48, 53, 55, 60] }, // C
+    { root: 29, fifth: 36, ninth: 43, third: 45, fifthHi: 48 }, // F
+    { root: 26, fifth: 33, ninth: 40, third: 41, fifthHi: 45 }, // Dm
+    { root: 22, fifth: 29, ninth: 36, third: 38, fifthHi: 41 }, // Bb
+    { root: 24, fifth: 31, ninth: 38, third: 41, fifthHi: 43 }, // C
+    { root: 26, fifth: 33, ninth: 40, third: 41, fifthHi: 45 }, // Dm
+    { root: 29, fifth: 36, ninth: 43, third: 45, fifthHi: 48 }, // F
+    { root: 22, fifth: 29, ninth: 36, third: 38, fifthHi: 41 }, // Bb
+    { root: 24, fifth: 31, ninth: 38, third: 41, fifthHi: 43 }, // C
   ];
 
-  // 1. Intro: Gợn sóng nước — Cascading bell-like pentatonic water ripples (p)
-  for (let bar = 0; bar < 4; bar++) {
-    const c = progression[bar];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    score.addNote(c.root, barStart, barDur * 0.95, 48, 'L');
-    score.addNote(c.fifth, barStart + beatSec * 0.98, barDur * 0.7, 44, 'L');
-    score.addNote(c.ninth, barStart + beatSec * 1.98, barDur * 0.5, 46, 'L');
-    score.addNote(c.third, barStart + beatSec * 2.98, barDur * 0.35, 48, 'L');
-
-    const introRipples = [77, 81, 84, 86, 84, 81, 77, 72];
-    introRipples.forEach((p, idx) => {
-      score.addNote(p, barStart + idx * (beatSec * 0.5), beatSec * 0.45, 54 + (idx % 3) * 4, 'R');
-    });
-
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  }
-
-  // Vocal melody phrase definitions
   const vocalPhrases = [
     [{ note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 74, dur: 1.4 }, { note: 72, dur: 0.6 }],
     [{ note: 67, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 74, dur: 1.0 }],
@@ -575,303 +673,253 @@ export function buildBeoDatMayTroi() {
     [{ note: 67, dur: 1.5 }, { note: 69, dur: 1.0 }, { note: 65, dur: 2.0 }],
   ];
 
-  // 2. Verse 1: "Bèo dạt mây trôi, chốn xa xôi..." (Cantabile vocal melody, mp)
-  vocalPhrases.forEach((phrase, bar) => {
-    const c = progression[bar % progression.length];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    const lhArp = [c.root, c.fifth, c.ninth, c.third, c.fifthHi, c.third];
-    lhArp.forEach((p, step) => {
-      const stepTime = barStart + step * (beatSec * 0.65);
-      score.addNote(p, stepTime, beatSec * 0.85, 52 + (step === 0 ? 12 : 0), 'L');
-    });
-
-    let noteTime = barStart;
-    phrase.forEach((n, idx) => {
-      const dur = n.dur * beatSec;
-      const isPeak = bar === 4;
-      const baseVel = isPeak ? 84 : 68;
-
-      if (idx === 0) {
-        score.addNote(n.note - 2, noteTime - 0.035, 0.04, baseVel - 12, 'R');
-      }
-
-      score.addNote(n.note, noteTime, dur * 0.95, baseVel + (idx % 2) * 4, 'R');
-
-      if (idx === 0 || idx === 2) {
-        score.addNote(n.note - 7, noteTime + 0.015, dur * 0.85, baseVel - 16, 'R');
-      }
-
-      noteTime += dur;
-    });
-
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  });
-
-  // 3. Verse 2: High Octave Flute-like Variation with Romantic River Waves (mf / f)
-  vocalPhrases.forEach((phrase, bar) => {
-    const c = progression[bar % progression.length];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    // LH: Rich sweeping 8-note river waves
-    const lhWave = [c.root - 12, c.root, c.fifth, c.ninth, c.third, c.fifthHi, c.third, c.ninth];
-    lhWave.forEach((p, step) => {
-      const stepTime = barStart + step * (beatSec * 0.5);
-      score.addNote(p, stepTime, beatSec * 0.7, 56 + (step === 0 ? 16 : 0), 'L');
-    });
-
-    let noteTime = barStart;
-    phrase.forEach((n, idx) => {
-      const dur = n.dur * beatSec;
-      const isPeak = bar === 4;
-      const baseVel = isPeak ? 92 : 76;
-      const highNote = n.note + 12; // 8va
-
-      score.addNote(highNote, noteTime, dur * 0.95, baseVel, 'R');
-      score.addNote(highNote - 12, noteTime + 0.01, dur * 0.85, baseVel - 14, 'R'); // lower octave shadow
-
-      noteTime += dur;
-    });
-
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  });
-
-  // 4. Outro: Tiếng đàn lắng đọng bên sông (diminuendo to ppp)
-  for (let bar = 0; bar < 2; bar++) {
+  // 1. Intro
+  for (let bar = 0; bar < 4; bar++) {
     const c = progression[bar];
     const barStart = t;
-    const barDur = 4 * beatSec * 1.25;
-    score.addPedal(barStart + 0.02, true);
-
-    score.addNote(c.root, barStart, barDur * 0.98, 42 - bar * 8, 'L');
-    score.addNote(c.fifth, barStart + beatSec, barDur * 0.8, 38 - bar * 8, 'L');
-
-    if (bar === 1) {
-      score.addRolledChord([53, 57, 60, 65, 69, 72, 77, 84, 89], barStart + beatSec * 0.5, barDur * 2.5, 46, 35, 'R');
-    } else {
-      score.addRolledChord([65, 69, 72, 77], barStart + beatSec * 0.5, barDur, 52, 25, 'R');
-    }
-
-    score.addPedal(barStart + barDur - 0.02, false);
-    t += barDur;
-  }
-
-  return score;
-}
-
-/**
- * 4. DIỄM XƯA (Trịnh Công Sơn)
- * Romantic Lyrical Solo Piano Arrangement
- */
-export function buildDiemXua() {
-  const bpm = 70;
-  const beatSec = 60 / bpm;
-  const score = new ExpressiveScoreBuilder('Diễm Xưa · Trịnh Công Sơn', bpm, [4, 4], -1);
-
-  let t = 0.5;
-
-  const progression = [
-    { root: 26, chord: [50, 53, 57, 62] }, // Dm
-    { root: 31, chord: [50, 55, 58, 62] }, // Gm
-    { root: 24, chord: [48, 52, 55, 60] }, // C
-    { root: 29, chord: [48, 53, 57, 60] }, // F
-    { root: 22, chord: [46, 50, 53, 58] }, // Bb
-    { root: 21, chord: [45, 49, 52, 57] }, // A7
-    { root: 26, chord: [50, 53, 57, 62] }, // Dm
-    { root: 21, chord: [45, 49, 52, 57] }, // A7
-  ];
-
-  // Intro: Mưa bay trên tháp cổ (pp)
-  for (let bar = 0; bar < 2; bar++) {
-    const c = progression[bar * 4];
-    const barStart = t;
     const barDur = 4 * beatSec;
     score.addPedal(barStart + 0.02, true);
-
     score.addNote(c.root, barStart, barDur * 0.95, 48, 'L');
-    score.addNote(c.root + 12, barStart + beatSec * 0.98, barDur * 0.7, 42, 'L');
-    score.addNote(c.root + 19, barStart + beatSec * 1.98, barDur * 0.5, 44, 'L');
-    score.addNote(c.root + 24, barStart + beatSec * 2.98, barDur * 0.35, 46, 'L');
-
-    const introArp = [69, 72, 76, 81, 76, 72, 69, 64];
-    introArp.forEach((p, idx) => {
-      score.addNote(p, barStart + idx * (beatSec * 0.5), beatSec * 0.45, 52 + (idx % 2) * 4, 'R');
+    score.addNote(c.fifth, barStart + beatSec * 0.98, barDur * 0.7, 44, 'L');
+    score.addNote(c.ninth, barStart + beatSec * 1.98, barDur * 0.5, 46, 'L');
+    score.addNote(c.third, barStart + beatSec * 2.98, barDur * 0.35, 48, 'L');
+    const ripples = [77, 81, 84, 86, 84, 81, 77, 72];
+    ripples.forEach((p, idx) => {
+      score.addNote(p, barStart + idx * (beatSec * 0.5), beatSec * 0.45, 54 + (idx % 3) * 4, 'R');
     });
-
     score.addPedal(barStart + barDur - 0.06, false);
     t += barDur;
   }
 
-  // Melody phrases: "Mưa vẫn mưa bay trên tầng tháp cổ..."
-  const diemPhrases = [
-    [{ note: 62, dur: 1.0 }, { note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }],
-    [{ note: 70, dur: 1.5 }, { note: 69, dur: 0.5 }, { note: 67, dur: 2.0 }],
-    [{ note: 60, dur: 1.0 }, { note: 64, dur: 1.0 }, { note: 67, dur: 1.0 }, { note: 70, dur: 1.0 }],
-    [{ note: 69, dur: 1.5 }, { note: 67, dur: 0.5 }, { note: 65, dur: 2.0 }],
-    [{ note: 58, dur: 1.0 }, { note: 62, dur: 1.0 }, { note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }],
-    [{ note: 67, dur: 1.5 }, { note: 65, dur: 0.5 }, { note: 64, dur: 2.0 }],
-    [{ note: 62, dur: 1.0 }, { note: 65, dur: 1.0 }, { note: 69, dur: 1.5 }, { note: 67, dur: 0.5 }],
-    [{ note: 62, dur: 3.0 }, { note: 64, dur: 1.0 }],
-  ];
-
-  // Verse 1 (Cantabile, mp)
-  diemPhrases.forEach((phrase, bar) => {
+  // 2. Verse 1
+  vocalPhrases.forEach((phrase, bar) => {
     const c = progression[bar % progression.length];
     const barStart = t;
     const barDur = 4 * beatSec;
     score.addPedal(barStart + 0.02, true);
-
-    // LH Arpeggio
-    score.addNote(c.root, barStart, barDur * 0.95, 52, 'L');
-    score.addNote(c.root + 7, barStart + beatSec, beatSec * 1.5, 46, 'L');
-    score.addNote(c.root + 12, barStart + beatSec * 2, beatSec * 1.5, 48, 'L');
-    score.addNote(c.root + 16, barStart + beatSec * 3, beatSec * 0.9, 44, 'L');
-
+    const lhArp = [c.root, c.fifth, c.ninth, c.third, c.fifthHi, c.third];
+    lhArp.forEach((p, step) => {
+      score.addNote(p, barStart + step * (beatSec * 0.65), beatSec * 0.85, 52 + (step === 0 ? 12 : 0), 'L');
+    });
     let noteTime = barStart;
     phrase.forEach((n, idx) => {
       const dur = n.dur * beatSec;
-      score.addNote(n.note, noteTime, dur * 0.95, 72 + (idx % 2) * 5, 'R');
-      if (idx === 0) {
-        score.addNote(n.note - 5, noteTime + 0.02, dur * 0.8, 54, 'R');
-      }
+      score.addNote(n.note, noteTime, dur * 0.95, 68 + (idx % 2) * 4, 'R');
       noteTime += dur;
     });
-
     score.addPedal(barStart + barDur - 0.06, false);
     t += barDur;
   });
 
-  // Verse 2: Dynamic build with rich octaves (mf / f)
-  diemPhrases.forEach((phrase, bar) => {
+  // 3. Verse 2
+  vocalPhrases.forEach((phrase, bar) => {
     const c = progression[bar % progression.length];
     const barStart = t;
     const barDur = 4 * beatSec;
     score.addPedal(barStart + 0.02, true);
-
-    // LH: sweeping octave arpeggios
-    score.addNote(c.root - 12, barStart, barDur * 0.95, 62, 'L');
-    score.addNote(c.root, barStart + beatSec * 0.5, beatSec * 1.2, 54, 'L');
-    score.addNote(c.root + 7, barStart + beatSec * 1.5, beatSec * 1.2, 52, 'L');
-    score.addNote(c.root + 12, barStart + beatSec * 2.5, beatSec * 1.2, 50, 'L');
-
+    const lhWave = [c.root - 12, c.root, c.fifth, c.ninth, c.third, c.fifthHi, c.third, c.ninth];
+    lhWave.forEach((p, step) => {
+      score.addNote(p, barStart + step * (beatSec * 0.5), beatSec * 0.7, 56 + (step === 0 ? 16 : 0), 'L');
+    });
     let noteTime = barStart;
-    phrase.forEach((n, idx) => {
+    phrase.forEach((n) => {
       const dur = n.dur * beatSec;
-      const vel = bar >= 4 ? 86 : 76;
-      score.addNote(n.note + 12, noteTime, dur * 0.95, vel, 'R');
-      score.addNote(n.note, noteTime + 0.015, dur * 0.85, vel - 16, 'R');
+      score.addNote(n.note + 12, noteTime, dur * 0.95, 82, 'R');
+      score.addNote(n.note, noteTime + 0.015, dur * 0.85, 64, 'R');
       noteTime += dur;
     });
-
     score.addPedal(barStart + barDur - 0.06, false);
     t += barDur;
   });
 
-  // Outro (pp)
+  // 4. Grand Climax Reprise
+  vocalPhrases.forEach((phrase, bar) => {
+    const c = progression[bar % progression.length];
+    const barStart = t;
+    const barDur = 4 * beatSec;
+    score.addPedal(barStart + 0.02, true);
+    score.addNote(c.root - 12, barStart, barDur * 0.98, 76, 'L');
+    score.addNote(c.fifth, barStart + beatSec, barDur * 0.8, 64, 'L');
+    score.addNote(c.ninth, barStart + beatSec * 2, barDur * 0.6, 68, 'L');
+    let noteTime = barStart;
+    phrase.forEach((n) => {
+      const dur = n.dur * beatSec;
+      score.addNote(n.note + 12, noteTime, dur * 0.95, 92, 'R');
+      score.addNote(n.note, noteTime + 0.015, dur * 0.85, 78, 'R');
+      noteTime += dur;
+    });
+    score.addPedal(barStart + barDur - 0.06, false);
+    t += barDur;
+  });
+
+  // 5. Outro
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([26, 38, 45, 50, 53, 57, 62, 69, 74, 81], t, 4 * beatSec * 2, 56, 32, 'R');
-  score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
+  score.addRolledChord([29, 41, 48, 53, 57, 60, 65, 69, 72, 77, 84, 89], t, 4 * beatSec * 2.5, 46, 35, 'R');
+  score.addPedal(t + 4 * beatSec * 2.5 - 0.02, false);
 
   return score;
 }
 
+/* ==========================================================================
+   2. CLASSICAL REPERTOIRE (FULL LENGTH BENCHMARKS)
+   ========================================================================== */
+
 /**
- * 5. MẸ YÊU CON (Nguyễn Văn Tý)
- * Lyrical 3/4 Vietnamese Masterpiece
+ * CANON IN D (Johann Pachelbel · Full Concert Grand Edition)
+ * Duration: ~3:20
  */
-export function buildMeYeuCon() {
-  const bpm = 74;
+export function buildCanonInD() {
+  const bpm = 68;
   const beatSec = 60 / bpm;
-  const score = new ExpressiveScoreBuilder('Mẹ Yêu Con · Nguyễn Văn Tý', bpm, [3, 4], -1);
+  const barDur = 4 * beatSec;
+  const score = new ExpressiveScoreBuilder('Canon in D · Pachelbel', bpm, [4, 4], 2);
 
   let t = 0.5;
 
-  const progression = [
-    { root: 29, chord: [53, 57, 60] }, // F
-    { root: 26, chord: [50, 53, 57] }, // Dm
-    { root: 22, chord: [46, 50, 53] }, // Bb
-    { root: 24, chord: [48, 52, 55] }, // C
-    { root: 29, chord: [53, 57, 60] }, // F
-    { root: 31, chord: [50, 55, 58] }, // Gm
-    { root: 24, chord: [48, 52, 55] }, // C
-    { root: 29, chord: [53, 57, 60] }, // F
+  const groundBass = [
+    { root: 26, arp: [38, 45, 50, 54] }, // D
+    { root: 33, arp: [45, 52, 57, 61] }, // A
+    { root: 35, arp: [47, 54, 59, 62] }, // Bm
+    { root: 30, arp: [42, 49, 54, 57] }, // F#m
+    { root: 31, arp: [43, 50, 55, 59] }, // G
+    { root: 26, arp: [38, 45, 50, 54] }, // D
+    { root: 31, arp: [43, 50, 55, 59] }, // G
+    { root: 33, arp: [45, 52, 57, 61] }, // A
   ];
 
-  // Vocal melody phrases in 3/4
-  const lullabyPhrases = [
-    [{ note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }],
-    [{ note: 74, dur: 1.5 }, { note: 72, dur: 0.5 }, { note: 69, dur: 1.0 }],
-    [{ note: 67, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }],
-    [{ note: 65, dur: 2.0 }, { note: 60, dur: 1.0 }],
-    [{ note: 65, dur: 1.0 }, { note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }],
-    [{ note: 77, dur: 1.5 }, { note: 74, dur: 0.5 }, { note: 72, dur: 1.0 }],
-    [{ note: 69, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 67, dur: 1.0 }],
-    [{ note: 65, dur: 3.0 }],
+  const melodyThemes = [
+    [74, 73, 71, 69, 67, 66, 67, 69],
+    [62, 64, 66, 67, 69, 71, 73, 74],
+    [74, 76, 74, 73, 71, 69, 71, 73],
+    [74, 78, 76, 74, 73, 71, 69, 71],
   ];
 
-  // Verse 1 (Rocking cradle arpeggio, mp)
-  lullabyPhrases.forEach((phrase, bar) => {
-    const c = progression[bar % progression.length];
-    const barStart = t;
-    const barDur = 3 * beatSec;
-    score.addPedal(barStart + 0.02, true);
+  for (let cycle = 0; cycle < 7; cycle++) {
+    groundBass.forEach((c, idx) => {
+      const barStart = t;
+      score.addPedal(barStart + 0.02, true);
 
-    score.addNote(c.root, barStart, barDur * 0.95, 50, 'L');
-    score.addNote(c.chord[0], barStart + beatSec, beatSec * 0.85, 42, 'L');
-    score.addNote(c.chord[1], barStart + beatSec * 2, beatSec * 0.85, 44, 'L');
+      const bassVel = 48 + cycle * 8;
+      score.addNote(c.root - (cycle >= 3 ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      if (cycle >= 3) {
+        score.addNote(c.root, barStart + 0.02, barDur * 0.9, bassVel - 8, 'L');
+      }
 
-    let noteTime = barStart;
-    phrase.forEach((n, idx) => {
-      const dur = n.dur * beatSec;
-      score.addNote(n.note, noteTime, dur * 0.95, 70 + (idx % 2) * 4, 'R');
-      noteTime += dur;
+      c.arp.forEach((p, step) => {
+        score.addNote(p, barStart + (step + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 6, 'L');
+      });
+
+      const theme = melodyThemes[cycle % melodyThemes.length];
+      const p = theme[idx];
+      const noteVel = 64 + cycle * 6;
+      const pitch = p + (cycle >= 4 ? 12 : 0);
+
+      score.addNote(pitch, barStart, barDur * 0.45, noteVel, 'R');
+      score.addNote(pitch - 2, barStart + barDur * 0.5, barDur * 0.45, noteVel - 4, 'R');
+
+      if (cycle >= 4) {
+        score.addNote(pitch - 12, barStart + 0.02, barDur * 0.4, noteVel - 15, 'R');
+      }
+
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
     });
+  }
 
-    score.addPedal(barStart + barDur - 0.05, false);
-    t += barDur;
-  });
-
-  // Verse 2 (8va vocal flute with warm bass, mf)
-  lullabyPhrases.forEach((phrase, bar) => {
-    const c = progression[bar % progression.length];
-    const barStart = t;
-    const barDur = 3 * beatSec;
-    score.addPedal(barStart + 0.02, true);
-
-    score.addNote(c.root - 12, barStart, barDur * 0.95, 58, 'L');
-    score.addNote(c.root, barStart + beatSec * 0.5, beatSec * 0.85, 48, 'L');
-    score.addNote(c.chord[0], barStart + beatSec * 1.5, beatSec * 0.85, 46, 'L');
-    score.addNote(c.chord[1], barStart + beatSec * 2.2, beatSec * 0.85, 48, 'L');
-
-    let noteTime = barStart;
-    phrase.forEach((n, idx) => {
-      const dur = n.dur * beatSec;
-      score.addNote(n.note + 12, noteTime, dur * 0.95, 80, 'R');
-      score.addNote(n.note, noteTime + 0.02, dur * 0.85, 60, 'R');
-      noteTime += dur;
-    });
-
-    score.addPedal(barStart + barDur - 0.05, false);
-    t += barDur;
-  });
-
-  // Outro (ppp)
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([29, 41, 48, 53, 57, 60, 65, 69, 72, 77, 84], t, 3 * beatSec * 3, 52, 28, 'R');
-  score.addPedal(t + 3 * beatSec * 3 - 0.05, false);
+  score.addRolledChord([26, 38, 45, 50, 54, 62, 66, 69, 74, 81], t, barDur * 3, 52, 35, 'R');
+  score.addPedal(t + barDur * 3 - 0.05, false);
 
   return score;
 }
 
 /**
- * 6. RIVER FLOWS IN YOU (Yiruma)
- * Modern Neoclassical Solo Piano
+ * FÜR ELISE (Ludwig van Beethoven · Complete Bagatelle WoO 59)
+ * Full Concert Duration: ~2:45
+ */
+export function buildFurElise() {
+  const bpm = 138;
+  const eighthSec = 60 / bpm;
+  const score = new ExpressiveScoreBuilder('Für Elise · Beethoven', bpm, [3, 8], 0);
+
+  let t = 0.5;
+
+  const playMotifA = (repeats = 2, dyn = 60, is8va = false) => {
+    for (let r = 0; r < repeats; r++) {
+      score.addPedal(t + 0.02, true);
+      const motif = [76, 75, 76, 75, 76, 71, 74, 72, 69];
+      motif.forEach((p, i) => {
+        const pitch = p + (is8va ? 12 : 0);
+        score.addNote(pitch, t + i * eighthSec, eighthSec * 0.92, dyn + (i % 2) * 4, 'R');
+      });
+      score.addNote(33, t + 4 * eighthSec, eighthSec * 3, dyn - 12, 'L');
+      score.addNote(45, t + 5 * eighthSec, eighthSec * 2, dyn - 14, 'L');
+      score.addNote(52, t + 6 * eighthSec, eighthSec * 2, dyn - 12, 'L');
+      score.addNote(57, t + 7 * eighthSec, eighthSec * 2, dyn - 10, 'L');
+      t += 9 * eighthSec;
+      score.addPedal(t - 0.04, false);
+    }
+  };
+
+  const playSectionB = (dyn = 76) => {
+    for (let pass = 0; pass < 2; pass++) {
+      score.addPedal(t + 0.02, true);
+      const bTheme = [65, 69, 72, 77, 76, 74, 72, 70, 69, 67, 65, 69, 72, 76, 77, 79, 81];
+      bTheme.forEach((p, i) => {
+        score.addNote(p, t + i * (eighthSec * 1.1), eighthSec * 1.05, dyn + (pass * 6), 'R');
+        if (i % 2 === 0) {
+          score.addNote(29, t + i * (eighthSec * 1.1), eighthSec * 2.1, dyn - 16, 'L');
+          score.addNote(41, t + i * (eighthSec * 1.1) + 0.02, eighthSec * 2.0, dyn - 20, 'L');
+        }
+      });
+      t += bTheme.length * (eighthSec * 1.1);
+      score.addPedal(t - 0.04, false);
+    }
+  };
+
+  const playSectionC = () => {
+    score.addPedal(t + 0.02, true);
+    for (let i = 0; i < 32; i++) {
+      score.addNote(21, t + i * eighthSec, eighthSec * 0.8, 88, 'L');
+      score.addNote(33, t + i * eighthSec + 0.01, eighthSec * 0.8, 82, 'L');
+      if (i % 4 === 0) {
+        score.addNote(69, t + i * eighthSec, eighthSec * 3.5, 94, 'R');
+        score.addNote(72, t + i * eighthSec + 0.01, eighthSec * 3.5, 88, 'R');
+      }
+    }
+    t += 32 * eighthSec;
+    const chrom = [93, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 77, 76];
+    chrom.forEach((p, i) => {
+      score.addNote(p, t + i * (eighthSec * 0.25), eighthSec * 0.35, 84 - i * 2, 'R');
+    });
+    t += chrom.length * (eighthSec * 0.25);
+    score.addPedal(t - 0.04, false);
+  };
+
+  // Full A-B-A-C-A-B-A Concert Structure (~2:45)
+  playMotifA(4, 58, false);
+  playSectionB(74);
+  playMotifA(3, 64, false);
+  playSectionC();
+  playMotifA(3, 70, true);
+  playSectionB(80);
+  playMotifA(3, 54, false);
+
+  // Coda
+  score.addPedal(t + 0.02, true);
+  score.addRolledChord([21, 33, 45, 52, 57, 60, 69, 81, 88], t, eighthSec * 12, 48, 30, 'R');
+  score.addPedal(t + eighthSec * 12 - 0.05, false);
+
+  return score;
+}
+
+/* ==========================================================================
+   3. MODERN & CINEMATIC PIANO (FULL LENGTH)
+   ========================================================================== */
+
+/**
+ * RIVER FLOWS IN YOU (Yiruma · Full Grand Solo)
+ * Full Concert Duration: ~3:10
  */
 export function buildRiverFlowsInYou() {
   const bpm = 68;
@@ -887,54 +935,53 @@ export function buildRiverFlowsInYou() {
     { root: 28, arp: [40, 47, 52, 56] }, // E
   ];
 
-  // Flowing river phrases
-  const melody1 = [
+  const themeA = [
     [{ note: 73, dur: 0.5 }, { note: 71, dur: 0.5 }, { note: 73, dur: 0.5 }, { note: 69, dur: 2.5 }],
     [{ note: 73, dur: 0.5 }, { note: 71, dur: 0.5 }, { note: 73, dur: 0.5 }, { note: 69, dur: 2.5 }],
     [{ note: 73, dur: 0.5 }, { note: 71, dur: 0.5 }, { note: 73, dur: 0.5 }, { note: 74, dur: 1.0 }, { note: 73, dur: 0.5 }, { note: 71, dur: 1.0 }],
     [{ note: 69, dur: 0.5 }, { note: 71, dur: 0.5 }, { note: 68, dur: 3.0 }],
   ];
 
-  // Play pattern 3 times with dynamic growth
-  for (let cycle = 0; cycle < 3; cycle++) {
-    melody1.forEach((phrase, bar) => {
+  for (let pass = 0; pass < 12; pass++) {
+    themeA.forEach((phrase, bar) => {
       const c = chords[bar % chords.length];
       const barStart = t;
       const barDur = 4 * beatSec;
       score.addPedal(barStart + 0.02, true);
 
-      // LH: Flowing rolling arpeggio
-      score.addNote(c.root, barStart, barDur * 0.95, 54 + cycle * 6, 'L');
+      const bassVel = 48 + Math.min(30, pass * 3);
+      score.addNote(c.root - (pass >= 4 ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
       c.arp.forEach((p, idx) => {
-        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, 46 + cycle * 4, 'L');
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
       });
 
       let noteTime = barStart;
       phrase.forEach((n, idx) => {
         const dur = n.dur * beatSec;
-        const vel = 66 + cycle * 10 + (idx % 2) * 4;
-        score.addNote(n.note, noteTime, dur * 0.95, vel, 'R');
-        if (cycle >= 1 && idx === 0) {
-          score.addNote(n.note - 12, noteTime + 0.02, dur * 0.8, vel - 18, 'R');
+        const vel = 64 + Math.min(30, pass * 3) + (idx % 2) * 4;
+        const pitch = n.note + (pass >= 6 ? 12 : 0);
+        score.addNote(pitch, noteTime, dur * 0.95, vel, 'R');
+        if (pass >= 3) {
+          score.addNote(pitch - 12, noteTime + 0.02, dur * 0.8, vel - 18, 'R');
         }
         noteTime += dur;
       });
 
-      score.addPedal(barStart + barDur - 0.06, false);
+      score.addPedal(barStart + barDur - 0.05, false);
       t += barDur;
     });
   }
 
-  // Outro
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([33, 45, 52, 57, 61, 69, 73, 81], t, 4 * beatSec * 2, 52, 30, 'R');
+  score.addRolledChord([33, 45, 52, 57, 61, 69, 73, 81], t, 4 * beatSec * 2, 50, 30, 'R');
   score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
 
   return score;
 }
 
 /**
- * 7. KISS THE RAIN (Yiruma)
+ * KISS THE RAIN (Yiruma · Full Grand Solo)
+ * Full Concert Duration: ~3:15
  */
 export function buildKissTheRain() {
   const bpm = 64;
@@ -950,46 +997,53 @@ export function buildKissTheRain() {
     { root: 25, arp: [37, 44, 49, 53] }, // Db
   ];
 
-  const rainMelody = [
+  const melody = [
     [{ note: 68, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 75, dur: 1.0 }],
     [{ note: 72, dur: 2.0 }, { note: 70, dur: 2.0 }],
     [{ note: 68, dur: 1.0 }, { note: 70, dur: 1.0 }, { note: 72, dur: 1.0 }, { note: 75, dur: 1.0 }],
     [{ note: 73, dur: 2.0 }, { note: 72, dur: 2.0 }],
   ];
 
-  for (let cycle = 0; cycle < 2; cycle++) {
-    rainMelody.forEach((phrase, bar) => {
+  for (let pass = 0; pass < 12; pass++) {
+    melody.forEach((phrase, bar) => {
       const c = chords[bar % chords.length];
       const barStart = t;
       const barDur = 4 * beatSec;
       score.addPedal(barStart + 0.02, true);
 
-      score.addNote(c.root, barStart, barDur * 0.95, 50 + cycle * 8, 'L');
+      const bassVel = 46 + Math.min(28, pass * 3);
+      score.addNote(c.root, barStart, barDur * 0.95, bassVel, 'L');
       c.arp.forEach((p, idx) => {
-        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, 44 + cycle * 6, 'L');
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
       });
 
       let noteTime = barStart;
-      phrase.forEach((n, idx) => {
+      phrase.forEach((n) => {
         const dur = n.dur * beatSec;
-        score.addNote(n.note, noteTime, dur * 0.95, 68 + cycle * 10, 'R');
+        const vel = 64 + Math.min(26, pass * 3);
+        const pitch = n.note + (pass >= 6 ? 12 : 0);
+        score.addNote(pitch, noteTime, dur * 0.95, vel, 'R');
+        if (pass >= 4) {
+          score.addNote(pitch - 12, noteTime + 0.015, dur * 0.85, vel - 16, 'R');
+        }
         noteTime += dur;
       });
 
-      score.addPedal(barStart + barDur - 0.06, false);
+      score.addPedal(barStart + barDur - 0.05, false);
       t += barDur;
     });
   }
 
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([32, 44, 51, 56, 60, 68, 72, 80], t, 4 * beatSec * 2, 50, 30, 'R');
+  score.addRolledChord([32, 44, 51, 56, 60, 68, 72, 80], t, 4 * beatSec * 2, 48, 30, 'R');
   score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
 
   return score;
 }
 
 /**
- * 8. NUVOLE BIANCHE (Ludovico Einaudi)
+ * NUVOLE BIANCHE (Ludovico Einaudi · Full Composition)
+ * Full Concert Duration: ~3:25
  */
 export function buildNuvoleBianche() {
   const bpm = 128;
@@ -1005,21 +1059,21 @@ export function buildNuvoleBianche() {
     { root: 27, ost: [51, 55, 58, 63] }, // Eb
   ];
 
-  // Minimalist ostinato expanding gradually
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 24; pass++) {
     progression.forEach((c) => {
       const barStart = t;
       const barDur = 4 * beatSec;
       score.addPedal(barStart + 0.02, true);
 
-      // LH Bass
-      score.addNote(c.root, barStart, barDur * 0.95, 46 + pass * 16, 'L');
-      score.addNote(c.root + 12, barStart + beatSec * 2, barDur * 0.45, 42 + pass * 14, 'L');
+      const bassVel = 42 + Math.min(50, pass * 2.5);
+      score.addNote(c.root - (pass >= 10 ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      if (pass >= 10) {
+        score.addNote(c.root, barStart + beatSec * 2, barDur * 0.45, bassVel - 8, 'L');
+      }
 
-      // RH Minimalist Ostinato Wave
       for (let step = 0; step < 8; step++) {
-        const p = c.ost[step % c.ost.length] + (pass >= 1 ? 12 : 0);
-        score.addNote(p, barStart + step * (beatSec * 0.5), beatSec * 0.48, 52 + pass * 14 + (step % 2) * 5, 'R');
+        const p = c.ost[step % c.ost.length] + (pass >= 8 ? 12 : 0);
+        score.addNote(p, barStart + step * (beatSec * 0.5), beatSec * 0.48, 48 + Math.min(45, pass * 2.5) + (step % 2) * 4, 'R');
       }
 
       score.addPedal(barStart + barDur - 0.05, false);
@@ -1028,14 +1082,15 @@ export function buildNuvoleBianche() {
   }
 
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([29, 41, 48, 53, 56, 60, 65, 72, 80], t, 4 * beatSec * 2, 54, 25, 'R');
+  score.addRolledChord([29, 41, 48, 53, 56, 60, 65, 72, 80], t, 4 * beatSec * 2, 50, 25, 'R');
   score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
 
   return score;
 }
 
 /**
- * 9. MARIAGE D'AMOUR (Paul de Senneville)
+ * MARIAGE D'AMOUR (Paul de Senneville · Complete Concert Solo)
+ * Full Concert Duration: ~2:45
  */
 export function buildMariageDamour() {
   const bpm = 80;
@@ -1066,37 +1121,46 @@ export function buildMariageDamour() {
     [{ note: 67, dur: 4.0 }],
   ];
 
-  theme.forEach((phrase, bar) => {
-    const c = chords[bar % chords.length];
-    const barStart = t;
-    const barDur = 4 * beatSec;
-    score.addPedal(barStart + 0.02, true);
+  for (let pass = 0; pass < 6; pass++) {
+    theme.forEach((phrase, bar) => {
+      const c = chords[bar % chords.length];
+      const barStart = t;
+      const barDur = 4 * beatSec;
+      score.addPedal(barStart + 0.02, true);
 
-    score.addNote(c.root, barStart, barDur * 0.95, 56, 'L');
-    c.arp.forEach((p, idx) => {
-      score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, 48, 'L');
+      const bassVel = 52 + pass * 6;
+      score.addNote(c.root - (pass >= 3 ? 12 : 0), barStart, barDur * 0.95, bassVel, 'L');
+      c.arp.forEach((p, idx) => {
+        score.addNote(p, barStart + (idx + 1) * (beatSec * 0.75), beatSec * 0.9, bassVel - 8, 'L');
+      });
+
+      let noteTime = barStart;
+      phrase.forEach((n, idx) => {
+        const dur = n.dur * beatSec;
+        const vel = 70 + pass * 5 + (idx % 2) * 4;
+        const pitch = n.note + (pass >= 4 ? 12 : 0);
+        score.addNote(pitch, noteTime, dur * 0.95, vel, 'R');
+        if (pass >= 2) {
+          score.addNote(pitch - 12, noteTime + 0.015, dur * 0.85, vel - 15, 'R');
+        }
+        noteTime += dur;
+      });
+
+      score.addPedal(barStart + barDur - 0.05, false);
+      t += barDur;
     });
-
-    let noteTime = barStart;
-    phrase.forEach((n, idx) => {
-      const dur = n.dur * beatSec;
-      score.addNote(n.note, noteTime, dur * 0.95, 76 + (idx % 2) * 6, 'R');
-      noteTime += dur;
-    });
-
-    score.addPedal(barStart + barDur - 0.06, false);
-    t += barDur;
-  });
+  }
 
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([31, 43, 50, 55, 58, 67, 70, 74, 79], t, 4 * beatSec * 2, 54, 30, 'R');
+  score.addRolledChord([31, 43, 50, 55, 58, 67, 70, 74, 79], t, 4 * beatSec * 2, 52, 30, 'R');
   score.addPedal(t + 4 * beatSec * 2 - 0.05, false);
 
   return score;
 }
 
 /**
- * 10. TIME (Hans Zimmer / Inception)
+ * TIME (Hans Zimmer · Inception Grand Suite)
+ * Full Concert Duration: ~3:45
  */
 export function buildTimeInception() {
   const bpm = 60;
@@ -1116,23 +1180,21 @@ export function buildTimeInception() {
     { root: 28, chord: [52, 56, 59] }, // E
   ];
 
-  // 3 Cycles: pp -> mf -> Grand Fortissimo Climax
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 6; pass++) {
     progression.forEach((c) => {
       const barStart = t;
       const barDur = 4 * beatSec;
       score.addPedal(barStart + 0.02, true);
 
-      const bassVel = 42 + pass * 24;
-      score.addNote(c.root - (pass >= 1 ? 12 : 0), barStart, barDur * 0.98, bassVel, 'L');
-      if (pass >= 2) {
+      const bassVel = 40 + pass * 12;
+      score.addNote(c.root - (pass >= 2 ? 12 : 0), barStart, barDur * 0.98, bassVel, 'L');
+      if (pass >= 3) {
         score.addNote(c.root, barStart + 0.02, barDur * 0.95, bassVel - 8, 'L');
       }
 
-      // Sustained chord pulses
       for (let beat = 0; beat < 4; beat++) {
         c.chord.forEach((p) => {
-          score.addNote(p + (pass >= 1 ? 12 : 0), barStart + beat * beatSec, beatSec * 0.95, 46 + pass * 18, 'R');
+          score.addNote(p + (pass >= 3 ? 12 : 0), barStart + beat * beatSec, beatSec * 0.95, 46 + pass * 9, 'R');
         });
       }
 
@@ -1141,16 +1203,16 @@ export function buildTimeInception() {
     });
   }
 
-  // Final fading chord (ppp)
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([21, 33, 45, 57, 60, 64, 69, 72, 81], t, 4 * beatSec * 3, 48, 40, 'R');
+  score.addRolledChord([21, 33, 45, 57, 60, 64, 69, 72, 81], t, 4 * beatSec * 3, 46, 40, 'R');
   score.addPedal(t + 4 * beatSec * 3 - 0.05, false);
 
   return score;
 }
 
 /**
- * 11. INTERSTELLAR (Hans Zimmer)
+ * INTERSTELLAR (Hans Zimmer · Main Theme Suite)
+ * Full Concert Duration: ~3:15
  */
 export function buildInterstellar() {
   const bpm = 90;
@@ -1166,20 +1228,20 @@ export function buildInterstellar() {
     { root: 31, motif: [74, 76, 74] }, // G
   ];
 
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 24; pass++) {
     progression.forEach((c) => {
       const barStart = t;
       const barDur = 3 * beatSec;
       score.addPedal(barStart + 0.02, true);
 
-      score.addNote(c.root - (pass >= 1 ? 12 : 0), barStart, barDur * 0.98, 48 + pass * 20, 'L');
-      if (pass >= 2) {
-        score.addNote(c.root, barStart + beatSec, barDur * 0.65, 58, 'L');
+      const bassVel = 44 + Math.min(50, pass * 2.5);
+      score.addNote(c.root - (pass >= 8 ? 12 : 0), barStart, barDur * 0.98, bassVel, 'L');
+      if (pass >= 12) {
+        score.addNote(c.root, barStart + beatSec, barDur * 0.65, bassVel - 8, 'L');
       }
 
-      // Rising oscillating motif
       c.motif.forEach((p, idx) => {
-        score.addNote(p + (pass >= 2 ? 12 : 0), barStart + idx * beatSec, beatSec * 0.95, 62 + pass * 16, 'R');
+        score.addNote(p + (pass >= 10 ? 12 : 0), barStart + idx * beatSec, beatSec * 0.95, 56 + Math.min(46, pass * 2.5), 'R');
       });
 
       score.addPedal(barStart + barDur - 0.04, false);
@@ -1188,14 +1250,15 @@ export function buildInterstellar() {
   }
 
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([21, 33, 45, 57, 64, 69, 76, 81, 88], t, 3 * beatSec * 3, 50, 35, 'R');
+  score.addRolledChord([21, 33, 45, 57, 64, 69, 76, 81, 88], t, 3 * beatSec * 3, 48, 35, 'R');
   score.addPedal(t + 3 * beatSec * 3 - 0.05, false);
 
   return score;
 }
 
 /**
- * 12. MERRY-GO-ROUND OF LIFE (Joe Hisaishi / Howl's Moving Castle)
+ * MERRY-GO-ROUND OF LIFE (Joe Hisaishi · Complete Concert Waltz)
+ * Full Concert Duration: ~3:20
  */
 export function buildMerryGoRound() {
   const bpm = 130;
@@ -1226,49 +1289,58 @@ export function buildMerryGoRound() {
     [{ note: 67, dur: 3.0 }],
   ];
 
-  waltzTheme.forEach((phrase, bar) => {
-    const c = progression[bar % progression.length];
-    const barStart = t;
-    const barDur = 3 * beatSec;
-    score.addPedal(barStart + 0.02, true);
+  for (let pass = 0; pass < 16; pass++) {
+    waltzTheme.forEach((phrase, bar) => {
+      const c = progression[bar % progression.length];
+      const barStart = t;
+      const barDur = 3 * beatSec;
+      score.addPedal(barStart + 0.02, true);
 
-    // LH: Viennese Waltz (Bass on 1, Staccato Chords on 2 & 3)
-    score.addNote(c.root, barStart, beatSec * 0.9, 68, 'L');
-    score.addRolledChord(c.chord, barStart + beatSec, beatSec * 0.6, 52, 12, 'L');
-    score.addRolledChord(c.chord, barStart + beatSec * 2, beatSec * 0.6, 52, 12, 'L');
+      const bassVel = 58 + Math.min(32, pass * 2.5);
+      score.addNote(c.root - (pass >= 6 ? 12 : 0), barStart, beatSec * 0.9, bassVel, 'L');
+      score.addRolledChord(c.chord, barStart + beatSec, beatSec * 0.6, bassVel - 12, 12, 'L');
+      score.addRolledChord(c.chord, barStart + beatSec * 2, beatSec * 0.6, bassVel - 12, 12, 'L');
 
-    let noteTime = barStart;
-    phrase.forEach((n) => {
-      const dur = n.dur * beatSec;
-      score.addNote(n.note, noteTime, dur * 0.9, 78, 'R');
-      noteTime += dur;
+      let noteTime = barStart;
+      phrase.forEach((n) => {
+        const dur = n.dur * beatSec;
+        const vel = 70 + Math.min(26, pass * 2);
+        score.addNote(n.note + (pass >= 8 ? 12 : 0), noteTime, dur * 0.9, vel, 'R');
+        noteTime += dur;
+      });
+
+      score.addPedal(barStart + barDur - 0.04, false);
+      t += barDur;
     });
-
-    score.addPedal(barStart + barDur - 0.04, false);
-    t += barDur;
-  });
+  }
 
   score.addPedal(t + 0.02, true);
-  score.addRolledChord([31, 43, 50, 55, 58, 67, 74, 79, 86], t, 3 * beatSec * 2, 60, 25, 'R');
+  score.addRolledChord([31, 43, 50, 55, 58, 67, 74, 79, 86], t, 3 * beatSec * 2, 58, 25, 'R');
   score.addPedal(t + 3 * beatSec * 2 - 0.05, false);
 
   return score;
 }
 
 /**
- * Generate and write all Complete Repertoire Pieces
+ * Generate and write all Complete Full-Length Repertoire Pieces
  */
 export function generateAllMidis() {
   const pieces = [
+    // 1. Classical
     { file: 'canon-in-d.mid', builder: buildCanonInD },
     { file: 'fur-elise.mid', builder: buildFurElise },
+    // 2. Vietnamese Virtuosic & Lyrical
+    { file: 'co-chang-trai-viet-len-cay.mid', builder: buildCoChangTraiVietLenCay },
+    { file: 'nham-mat-thay-mua-he.mid', builder: buildNhamMatThayMuaHe },
+    { file: 'hanh-phuc-moi.mid', builder: buildHanhPhucMoi },
+    { file: 'phep-mau.mid', builder: buildPhepMau },
     { file: 'beo-dat-may-troi.mid', builder: buildBeoDatMayTroi },
-    { file: 'diem-xua.mid', builder: buildDiemXua },
-    { file: 'me-yeu-con.mid', builder: buildMeYeuCon },
+    // 3. Modern Piano
     { file: 'river-flows-in-you.mid', builder: buildRiverFlowsInYou },
     { file: 'kiss-the-rain.mid', builder: buildKissTheRain },
     { file: 'nuvole-bianche.mid', builder: buildNuvoleBianche },
     { file: 'mariage-damour.mid', builder: buildMariageDamour },
+    // 4. Cinematic Piano
     { file: 'time-inception.mid', builder: buildTimeInception },
     { file: 'interstellar.mid', builder: buildInterstellar },
     { file: 'merry-go-round-of-life.mid', builder: buildMerryGoRound },
@@ -1290,6 +1362,6 @@ export function generateAllMidis() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const results = generateAllMidis();
-  console.log('\n=== PROFESSIONAL PERFORMANCE V2 REPERTOIRE GENERATED ===\n');
+  console.log('\n=== PROFESSIONAL PERFORMANCE V2 FULL-LENGTH REPERTOIRE GENERATED ===\n');
   console.table(results);
 }

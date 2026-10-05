@@ -171,6 +171,7 @@ export default function Home() {
   const demoRef = useRef(false);
   const transport = useRef<PianoTransport | null>(null);
   const [selection, setSelection] = useState('prelude');
+  const currentPieceMeta = useMemo(() => REPERTOIRE.find(p => p.id === selection), [selection]);
   const [builtin, setBuiltin] = useState<Record<string, PianoScore>>({});
   const [imported, setImported] = useState<PianoScore | null>(null);
   const [position, setPosition] = useState(0);
@@ -1119,6 +1120,17 @@ export default function Home() {
             {dockMinimized ? <Maximize2 size={15} /> : <span aria-hidden="true">−</span>}
           </button>
         </div>
+        {currentPieceMeta && !dockMinimized && (
+          <div className="repertoire-meta-bar">
+            <span className="repertoire-meta-title">{currentPieceMeta.title}</span>
+            <span className="repertoire-meta-sep">·</span>
+            <span className="repertoire-meta-composer">{currentPieceMeta.composer}</span>
+            <span className="repertoire-meta-sep">·</span>
+            <span className="repertoire-meta-tag">{currentPieceMeta.style}</span>
+            <span className="repertoire-meta-sep">·</span>
+            <span className="repertoire-meta-tag">{currentPieceMeta.duration}</span>
+          </div>
+        )}
         <Slider
           className="playback-seek"
           aria-label={t("示奏进度，可拖动跳转")}
