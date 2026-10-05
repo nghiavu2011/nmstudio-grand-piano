@@ -554,23 +554,26 @@ const pDandelion = [
 ];
 
 const songs = [
-  { name: '50-nam-ve-sau.mid', bpm: 74, patterns: p50Nam, bars: 32 },
-  { name: 'bai-thanh-ca-buon.mid', bpm: 68, patterns: pThanhCa, bars: 32 },
-  { name: 'close-to-you.mid', bpm: 88, patterns: pCloseToYou, bars: 32 },
-  { name: 'golden-hour.mid', bpm: 94, patterns: pGoldenHour, bars: 36 },
-  { name: 'haru-haru.mid', bpm: 82, patterns: pHaruHaru, bars: 32 },
-  { name: 'ill-never-love-again.mid', bpm: 70, patterns: pNeverLove, bars: 32 },
-  { name: 'imagine.mid', bpm: 76, patterns: pImagine, bars: 32 },
-  { name: 'last-christmas.mid', bpm: 108, patterns: pLastChristmas, bars: 36 },
-  { name: 'proud-of-you.mid', bpm: 78, patterns: pProudOfYou, bars: 32 },
-  { name: 'su-thanh-hoa.mid', bpm: 76, patterns: pSuThanhHoa, bars: 32 },
-  { name: 'vet-mua.mid', bpm: 80, patterns: pVetMua, bars: 32 },
-  { name: 'dandelions-promise.mid', bpm: 72, patterns: pDandelion, bars: 32 },
+  { name: '50-nam-ve-sau.mid', bpm: 74, patterns: p50Nam, targetSec: 355 },
+  { name: 'bai-thanh-ca-buon.mid', bpm: 68, patterns: pThanhCa, targetSec: 389 },
+  { name: 'close-to-you.mid', bpm: 88, patterns: pCloseToYou, targetSec: 241 },
+  { name: 'golden-hour.mid', bpm: 94, patterns: pGoldenHour, targetSec: 229 },
+  { name: 'haru-haru.mid', bpm: 82, patterns: pHaruHaru, targetSec: 305 },
+  { name: 'ill-never-love-again.mid', bpm: 70, patterns: pNeverLove, targetSec: 282 },
+  { name: 'imagine.mid', bpm: 76, patterns: pImagine, targetSec: 202 },
+  { name: 'last-christmas.mid', bpm: 108, patterns: pLastChristmas, targetSec: 458 },
+  { name: 'proud-of-you.mid', bpm: 78, patterns: pProudOfYou, targetSec: 210 },
+  { name: 'su-thanh-hoa.mid', bpm: 76, patterns: pSuThanhHoa, targetSec: 259 },
+  { name: 'vet-mua.mid', bpm: 80, patterns: pVetMua, targetSec: 249 },
+  { name: 'dandelions-promise.mid', bpm: 72, patterns: pDandelion, targetSec: 318 },
 ];
 
 songs.forEach((s) => {
+  const beatsPerBar = s.timeSignature ? s.timeSignature[0] : 4;
+  const bars = Math.ceil((s.targetSec * s.bpm) / (beatsPerBar * 60)) + 1;
   const filePath = path.join(OUT_DIR, s.name);
-  const bytes = buildExpressivePianoMidi(s);
+  const bytes = buildExpressivePianoMidi({ ...s, bars });
   fs.writeFileSync(filePath, bytes);
-  console.log(`Generated MIDI: ${s.name} (${bytes.length} bytes)`);
+  const durationSec = (bars * beatsPerBar * 60) / s.bpm;
+  console.log(`Generated Full-Length MIDI: ${s.name} (${bars} bars, ~${Math.round(durationSec)}s, ${bytes.length} bytes)`);
 });

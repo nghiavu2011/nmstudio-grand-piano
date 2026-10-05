@@ -35,6 +35,11 @@ export class PianoTransport {
     this.position = offset;
     const generation = ++this.generation;
     this.playing = true;
+
+    if (score.audioUrl) {
+      this.audio.playTrack?.(score.audioUrl, origin, offset);
+    }
+
     let voice = 0,
       event = 0;
     // Restore held keys and pedal state without replaying past hammer strikes.
@@ -48,6 +53,8 @@ export class PianoTransport {
     }
     this.state.onStrike = strike;
     const schedule = () => {
+      // When authentic audioUrl is playing, skip synthetic sampler note scheduling
+      if (score.audioUrl) return;
       // Hidden documents may have timers and animation frames suspended.
       // Queue the remaining audio on Web Audio's independent sample clock.
       const horizon = document.hidden ? score.duration : this.audio.context!.currentTime - origin + 5;
@@ -96,7 +103,10 @@ export class PianoTransport {
     if (this.backgroundSchedule) document.removeEventListener('visibilitychange', this.backgroundSchedule);
     this.backgroundSchedule = null;
     cancelAnimationFrame(this.frame);
-    if (cancelAudio) this.audio.cancelScore();
+    if (cancelAudio) {
+      this.audio.cancelScore();
+      this.audio.stopTrack?.();
+    }
     this.audio.setProfile?.('live');
     this.state.releaseSource('demo:');
     this.state.visualOnly = false;

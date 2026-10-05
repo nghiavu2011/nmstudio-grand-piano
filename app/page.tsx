@@ -247,6 +247,12 @@ export default function Home() {
             new Uint8Array(await response.arrayBuffer()),
             piece.title,
           );
+          if (piece.audioUrl) {
+            score.audioUrl = piece.audioUrl;
+          }
+          if (piece.audioDuration && piece.audioDuration > score.duration) {
+            score.duration = piece.audioDuration;
+          }
           if (!disposed) setBuiltin(previous => ({ ...previous, [piece.id]: score }));
           return;
         } catch {
@@ -544,6 +550,9 @@ export default function Home() {
     setDemo(true);
     try {
       await audio.current?.unlock();
+      if (chosenScore.audioUrl) {
+        await audio.current?.loadTrack(chosenScore.audioUrl);
+      }
     } catch {
       stopDemo();
       return;
@@ -555,6 +564,11 @@ export default function Home() {
       setDemo(false);
     }, 0.15, position >= chosenScore.duration ? 0 : position);
   };
+  useEffect(() => {
+    if (chosenScore?.audioUrl) {
+      void audio.current?.loadTrack(chosenScore.audioUrl);
+    }
+  }, [chosenScore]);
   useEffect(() => {
     if (chosenScore && world.current) world.current.sheet.setScore(chosenScore);
   }, [chosenScore, ready]);

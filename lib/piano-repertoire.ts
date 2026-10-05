@@ -30,6 +30,8 @@ export type RepertoireItem = {
   rightsStatus: RightsStatus;
   file: string;
   hasPerformance: boolean;
+  audioUrl?: string;
+  audioDuration?: number;
 };
 
 export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
@@ -58,13 +60,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Vietnam',
     category: 'VIETNAMESE',
     year: 2023,
-    duration: '03:15',
+    duration: '05:55',
     difficulty: 'Intermediate',
     style: 'Ballad / Emotive Grand Piano',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: '50-nam-ve-sau.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/50-nam-ve-sau.mp3',
+    audioDuration: 354.95,
   },
 
   // 2. Bài Thánh Ca Buồn
@@ -75,13 +79,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Vietnam',
     category: 'VIETNAMESE',
     year: 1972,
-    duration: '03:32',
+    duration: '06:28',
     difficulty: 'Intermediate',
     style: 'Trữ Tình Sâu Lắng / Slow Expressive',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'bai-thanh-ca-buon.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/bai-thanh-ca-buon.mp3',
+    audioDuration: 388.21,
   },
 
   // 3. Vết Mưa
@@ -92,13 +98,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Vietnam',
     category: 'VIETNAMESE',
     year: 2013,
-    duration: '02:40',
+    duration: '04:08',
     difficulty: 'Intermediate',
     style: 'Contemporary Ballad / Lyrical Flow',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'vet-mua.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/vet-mua.mp3',
+    audioDuration: 248.24,
   },
 
   // 4. Close To You
@@ -109,13 +117,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'USA',
     category: 'INTERNATIONAL POP',
     year: 1970,
-    duration: '02:50',
+    duration: '04:00',
     difficulty: 'Intermediate',
     style: 'Romantic Pop / Warm Arpeggio',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'close-to-you.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/close-to-you.mp3',
+    audioDuration: 240.48,
   },
 
   // 5. Golden Hour
@@ -126,13 +136,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'USA',
     category: 'INTERNATIONAL POP',
     year: 2022,
-    duration: '02:45',
+    duration: '03:48',
     difficulty: 'Advanced',
     style: 'Shimmering Arpeggios / Virtuosic Cascade',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'golden-hour.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/golden-hour.mp3',
+    audioDuration: 228.00,
   },
 
   // 6. I'll Never Love Again
@@ -143,13 +155,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'USA',
     category: 'INTERNATIONAL POP',
     year: 2018,
-    duration: '03:10',
+    duration: '04:41',
     difficulty: 'Intermediate',
     style: 'Cinematic Power Ballad / Dynamic Crescendo',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'ill-never-love-again.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/ill-never-love-again.mp3',
+    audioDuration: 281.68,
   },
 
   // 7. Imagine
@@ -160,13 +174,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'UK',
     category: 'INTERNATIONAL POP',
     year: 1971,
-    duration: '03:05',
+    duration: '03:21',
     difficulty: 'Easy',
     style: 'Iconic Grand Piano Motif / Timeless Classic',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'imagine.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/imagine.mp3',
+    audioDuration: 201.67,
   },
 
   // 8. Last Christmas
@@ -177,13 +193,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'UK',
     category: 'INTERNATIONAL POP',
     year: 1984,
-    duration: '03:20',
+    duration: '07:37',
     difficulty: 'Intermediate',
     style: 'Holiday Pop / Bright Melodic Flow',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'last-christmas.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/last-christmas.mp3',
+    audioDuration: 457.35,
   },
 
   // 9. Proud of You (I Can Fly)
@@ -194,13 +212,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Hong Kong',
     category: 'INTERNATIONAL POP',
     year: 2003,
-    duration: '02:35',
+    duration: '03:29',
     difficulty: 'Easy',
     style: 'Uplifting Acoustic Melody / Pure Lyrical',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'proud-of-you.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/proud-of-you.mp3',
+    audioDuration: 209.32,
   },
 
   // 10. Haru Haru
@@ -211,13 +231,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'South Korea',
     category: 'ASIAN POP',
     year: 2008,
-    duration: '03:12',
+    duration: '05:04',
     difficulty: 'Intermediate',
     style: 'Dramatic K-Pop Piano / Emotional Minor Flow',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'haru-haru.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/haru-haru.mp3',
+    audioDuration: 304.54,
   },
 
   // 11. Sứ Thanh Hoa (青花瓷)
@@ -228,13 +250,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Taiwan',
     category: 'ASIAN POP',
     year: 2007,
-    duration: '02:55',
+    duration: '04:18',
     difficulty: 'Intermediate',
     style: 'Pentatonic Chinese Wind / Poetic Piano',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'su-thanh-hoa.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/su-thanh-hoa.mp3',
+    audioDuration: 258.35,
   },
 
   // 12. 蒲公英的约定 (Dandelion's Promise)
@@ -245,13 +269,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Taiwan',
     category: 'ASIAN POP',
     year: 2007,
-    duration: '03:00',
+    duration: '05:18',
     difficulty: 'Intermediate',
     style: 'Nostalgic Youth Ballad / Gentle Resonance',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'dandelions-promise.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/dandelions-promise.mp3',
+    audioDuration: 317.86,
   },
 
   // 13. Interstellar
@@ -262,13 +288,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'USA / Germany',
     category: 'CINEMATIC',
     year: 2014,
-    duration: '03:18',
+    duration: '04:46',
     difficulty: 'Advanced',
     style: 'Cosmic / Wide Resonance Build',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'interstellar.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/interstellar.mp3',
+    audioDuration: 286.41,
   },
 
   // 14. Merry-Go-Round of Life
@@ -279,13 +307,15 @@ export const REPERTOIRE_REGISTRY: RepertoireItem[] = [
     country: 'Japan',
     category: 'CINEMATIC',
     year: 2004,
-    duration: '03:00',
+    duration: '05:28',
     difficulty: 'Advanced',
     style: 'Theatrical Waltz / 3/4 Rubato',
     source: 'N&Mstudio Concert Solo arrangement',
     rightsStatus: 'licensed',
     file: 'merry-go-round-of-life.mid',
     hasPerformance: true,
+    audioUrl: '/audio_demo/merry-go-round-of-life.mp3',
+    audioDuration: 327.84,
   },
 ];
 

@@ -26,6 +26,7 @@ export type PianoScore = {
   tempoChanges: number;
   warnings: string[];
   notation?: ScoreNotation;
+  audioUrl?: string;
 };
 
 /** Resolve pedal-held durations before scheduling audio; visual key-off times

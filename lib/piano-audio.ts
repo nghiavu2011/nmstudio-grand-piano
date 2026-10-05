@@ -119,6 +119,8 @@ export class GrandAudio implements PianoAudio {
   private voices = new Map<number, Voice>();
   private nextId = 0;
   private unlockPromise: Promise<void> | null = null;
+  private currentTrackSource: AudioBufferSourceNode | null = null;
+  private trackBuffers = new Map<string, AudioBuffer>();
   private master: GainNode | null = null;
   private dry: GainNode | null = null;
   private wet: GainNode | null = null;
@@ -626,7 +628,90 @@ export class GrandAudio implements PianoAudio {
     );
   }
 
+  /**
+   * Loads and decodes an authentic piano performance audio file into memory.
+   */
+  async loadTrack(url: string): Promise<AudioBuffer | null> {
+    if (this.trackBuffers.has(url)) return this.trackBuffers.get(url)!;
+    if (!this.context) {
+      this.context = new AudioContext({ latencyHint: 'interactive' });
+      this.buildGraph();
+    }
+    try {
+      const res = await fetch(url, { signal: this.abort.signal });
+      if (!res.ok) throw new Error(`Track HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
+      this.trackBuffers.set(url, audioBuffer);
+      return audioBuffer;
+    } catch (e) {
+      if (!this.abort.signal.aborted) {
+        console.error('Failed to load demo track:', url, e);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Plays an authentic master audio recording through the Web Audio graph:
+   * this.input -> this.dry -> this.master -> dynamic limiter -> this.analyser -> destination
+   * and this.input -> convolver -> this.wet -> this.master.
+   * Synchronized with Web Audio context.currentTime and score origin.
+   */
+  playTrack(url: string, origin: number, offset = 0) {
+    this.stopTrack();
+    if (!this.context || !this.input) return;
+
+    const startBuffer = (buffer: AudioBuffer) => {
+      if (this.disposed || !this.context || !this.input) return;
+      const source = this.context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.input);
+
+      const now = this.context.currentTime;
+      const startAt = Math.max(now, origin);
+      const bufferOffset = Math.max(0, offset + (startAt - origin));
+
+      if (bufferOffset < buffer.duration) {
+        source.start(startAt, bufferOffset);
+        this.currentTrackSource = source;
+        source.onended = () => {
+          if (this.currentTrackSource === source) {
+            this.currentTrackSource = null;
+          }
+        };
+      }
+    };
+
+    const cached = this.trackBuffers.get(url);
+    if (cached) {
+      startBuffer(cached);
+    } else {
+      void this.loadTrack(url).then((buf) => {
+        if (buf && this.currentTrackSource === null) {
+          startBuffer(buf);
+        }
+      });
+    }
+  }
+
+  /**
+   * Immediately stops any currently playing audio track.
+   */
+  stopTrack() {
+    if (this.currentTrackSource) {
+      try {
+        this.currentTrackSource.stop();
+        this.currentTrackSource.disconnect();
+      } catch {
+        // Safe to ignore if already stopped or disconnected
+      }
+      this.currentTrackSource = null;
+    }
+  }
+
   cancelScore() {
+    this.stopTrack();
     for (const voice of this.voices.values()) {
       if (voice.score) this.stopVoice(voice, 0.025);
     }
@@ -668,6 +753,7 @@ export class GrandAudio implements PianoAudio {
   }
 
   silence() {
+    this.stopTrack();
     for (const v of this.voices.values()) this.stopVoice(v, 0.025);
   }
 
@@ -697,11 +783,13 @@ export class GrandAudio implements PianoAudio {
   dispose() {
     this.disposed = true;
     this.abort.abort();
+    this.stopTrack();
     this.silence();
     this.resonanceBus?.disconnect();
     this.mechanicalEngine?.disconnect();
     void this.context?.close();
     this.raw.clear();
     this.buffers.clear();
+    this.trackBuffers.clear();
   }
 }

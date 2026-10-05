@@ -1228,7 +1228,7 @@ export function buildInterstellar() {
     { root: 31, motif: [74, 76, 74] }, // G
   ];
 
-  for (let pass = 0; pass < 24; pass++) {
+  for (let pass = 0; pass < 36; pass++) {
     progression.forEach((c) => {
       const barStart = t;
       const barDur = 3 * beatSec;
@@ -1258,7 +1258,7 @@ export function buildInterstellar() {
 
 /**
  * MERRY-GO-ROUND OF LIFE (Joe Hisaishi · Complete Concert Waltz)
- * Full Concert Duration: ~3:20
+ * Full Concert Duration: ~5:28
  */
 export function buildMerryGoRound() {
   const bpm = 130;
@@ -1289,7 +1289,7 @@ export function buildMerryGoRound() {
     [{ note: 67, dur: 3.0 }],
   ];
 
-  for (let pass = 0; pass < 16; pass++) {
+  for (let pass = 0; pass < 30; pass++) {
     waltzTheme.forEach((phrase, bar) => {
       const c = progression[bar % progression.length];
       const barStart = t;
