@@ -228,6 +228,7 @@ export default function Home() {
     let frame = 0;
     const scoreAbort = new AbortController();
     const loadScore = async (piece: (typeof REPERTOIRE)[number]) => {
+      if (!piece.hasPerformance || !piece.file || piece.file === 'prelude') return;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const response = await fetch(`/midi/${piece.file}`, {
@@ -1057,10 +1058,41 @@ export default function Home() {
                 setPosition(0);
               }}
             >
-              <option value="prelude">{t("Atelier Prelude · 原创示奏")}</option>
-              {REPERTOIRE.map(piece => <option key={piece.id} value={piece.id}>{pieceTitle(locale, piece.title)}</option>)}
+              <optgroup label={locale === 'vi' ? '★ Độc quyền N&Mstudio' : '★ N&Mstudio Originals'}>
+                <option value="prelude">Atelier Prelude · Original</option>
+              </optgroup>
+              <optgroup label={locale === 'vi' ? '🎼 Cổ điển (Classical)' : '🎼 Classical Repertoire'}>
+                {REPERTOIRE.filter(p => p.category === 'CLASSICAL').map(piece => (
+                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
+                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Sắp ra mắt)' : '(In queue)') : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={locale === 'vi' ? '🇻🇳 Tuyệt phẩm Việt Nam' : '🇻🇳 Vietnamese Masterpieces'}>
+                {REPERTOIRE.filter(p => p.category === 'VIETNAMESE').map(piece => (
+                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
+                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Sắp ra mắt)' : '(In queue)') : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={locale === 'vi' ? '🎹 Hiện đại & Lãng mạn' : '🎹 Modern & Contemporary'}>
+                {REPERTOIRE.filter(p => p.category === 'MODERN PIANO').map(piece => (
+                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
+                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Đang chuẩn bị)' : '(In queue)') : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={locale === 'vi' ? '🎬 Nhạc phim & Điện ảnh' : '🎬 Cinematic Themes'}>
+                {REPERTOIRE.filter(p => p.category === 'CINEMATIC').map(piece => (
+                  <option key={piece.id} value={piece.id} disabled={!piece.hasPerformance}>
+                    {piece.title} — {piece.composer} {!piece.hasPerformance ? (locale === 'vi' ? '(Đang chuẩn bị)' : '(In queue)') : ''}
+                  </option>
+                ))}
+              </optgroup>
               {imported && (
-                <option value="imported">{t("导入 ·")}{imported.title}</option>
+                <optgroup label={locale === 'vi' ? '📁 Tệp MIDI cá nhân' : '📁 Imported MIDI'}>
+                  <option value="imported">{t("导入 ·")}{imported.title}</option>
+                </optgroup>
               )}
             </select>
           </label>
