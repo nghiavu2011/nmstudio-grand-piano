@@ -133,21 +133,26 @@ function textPlate(
   const ctx = c.getContext('2d')!;
 
   if (text.includes('N&M') || text.includes('GRAND')) {
-    const grad = ctx.createLinearGradient(0, 0, 1024, 0);
-    grad.addColorStop(0, '#d4af37');
-    grad.addColorStop(0.3, '#f7e7a9');
-    grad.addColorStop(0.5, '#fff6d6');
-    grad.addColorStop(0.7, '#f7e7a9');
-    grad.addColorStop(1, '#d4af37');
+    const grad = ctx.createLinearGradient ? ctx.createLinearGradient(0, 0, 1024, 0) : null;
+    if (grad) {
+      grad.addColorStop(0, '#d4af37');
+      grad.addColorStop(0.3, '#f7e7a9');
+      grad.addColorStop(0.5, '#fff6d6');
+      grad.addColorStop(0.7, '#f7e7a9');
+      grad.addColorStop(1, '#d4af37');
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = grad;
+    } else {
+      ctx.fillStyle = '#d4af37';
+      ctx.strokeStyle = '#d4af37';
+    }
 
-    ctx.fillStyle = grad;
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetY = 2;
 
     // Golden decorative lines
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = grad;
     ctx.beginPath();
     ctx.moveTo(80, 64);
     ctx.lineTo(210, 64);
@@ -163,11 +168,15 @@ function textPlate(
     ctx.letterSpacing = '5px';
     ctx.fillText(text, 512, 64);
   } else if (text === 'G A' || text === 'N&M') {
-    const grad = ctx.createLinearGradient(0, 0, 1024, 0);
-    grad.addColorStop(0, '#d4af37');
-    grad.addColorStop(0.5, '#fff6d6');
-    grad.addColorStop(1, '#d4af37');
-    ctx.fillStyle = grad;
+    const grad = ctx.createLinearGradient ? ctx.createLinearGradient(0, 0, 1024, 0) : null;
+    if (grad) {
+      grad.addColorStop(0, '#d4af37');
+      grad.addColorStop(0.5, '#fff6d6');
+      grad.addColorStop(1, '#d4af37');
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = '#d4af37';
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = 'bold 52px Georgia, serif';

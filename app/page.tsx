@@ -158,6 +158,11 @@ export default function Home() {
     setSettings(false);
     world.current?.setImmersive(value);
   };
+  const [audioEngine, setAudioEngine] = useState<'v1' | 'v2'>('v2');
+  const changeAudioEngine = (ver: 'v1' | 'v2') => {
+    setAudioEngine(ver);
+    audio.current?.setEngineVersion(ver);
+  };
   const [octave, setOctave] = useState(4);
   const octaveRef = useRef(4);
   const velocityRef = useRef(0.78);
@@ -960,6 +965,32 @@ export default function Home() {
             >
               <span className="finish-swatch swatch-white" />
               <span>{locale === 'vi' ? 'Trắng sứ' : 'Ivory'}</span>
+            </button>
+          </div>
+        </div>
+        <div className="audio-engine-settings-row" style={{ marginTop: 14, marginBottom: 8 }}>
+          <div className="range-label" style={{ marginBottom: 6 }}>
+            <span>{locale === 'vi' ? 'Bộ xử lý âm thanh (A/B)' : 'Audio Engine (A/B)'}</span>
+            <span style={{ fontSize: 11, color: audioEngine === 'v2' ? '#d4b26f' : '#9ba69f' }}>
+              {audioEngine === 'v2' ? 'V2 (Calibrated)' : 'V1 (Legacy)'}
+            </span>
+          </div>
+          <div className="finish-buttons">
+            <button
+              type="button"
+              className={`finish-btn ${audioEngine === 'v2' ? 'selected' : ''}`}
+              onClick={() => changeAudioEngine('v2')}
+              title={locale === 'vi' ? 'Audio V2: Đa lớp dynamic, dải động chuẩn, âm sắc giàu nhạc tính' : 'Audio V2: Calibrated gain staging & dynamic multi-velocity'}
+            >
+              <span>⭐ Audio V2</span>
+            </button>
+            <button
+              type="button"
+              className={`finish-btn ${audioEngine === 'v1' ? 'selected' : ''}`}
+              onClick={() => changeAudioEngine('v1')}
+              title={locale === 'vi' ? 'Audio V1: Bản gốc trước đây để so sánh A/B' : 'Audio V1: Legacy engine for A/B comparison'}
+            >
+              <span>Audio V1</span>
             </button>
           </div>
         </div>
